@@ -51,8 +51,7 @@ static LONG local_exec(__reg("a0") void* ctx);
 static LONG local_run(__reg("a0") void* ctx);
 static LONG local_errno(__reg("a0") void* ctx);
 
-const struct loadseg_plugin plugin_info = {
-	{
+const struct plugin_common plugin_info = {
 	LOADSEG_PLUGIN_ID,
 	LOADSEG_PLUGIN_MAJOR,
 	LOADSEG_PLUGIN_MINOR,
@@ -65,7 +64,6 @@ const struct loadseg_plugin plugin_info = {
 	local_run,
 	local_done,
 	local_errno
-	}
 };
 
 static void* local_init(__reg("a0") recv_cb r, __reg("a1") send_cb s, __reg("a2") dt_header_t *h, __reg("a3") void* p)

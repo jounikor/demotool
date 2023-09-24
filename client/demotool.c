@@ -33,19 +33,34 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifndef __AMIGA__
 #include <unistd.h>
-#include <sys/socket.h>
 #include <sys/select.h>
+#include <fcntl.h>
+#include <getopt.h>
+#include <errno.h>
+#else
+#include <proto/exec.h>
+#include <proto/bsdsocket.h>
+#include <sys/ioctl.h>
+#include "getopt.h"
+#endif
+
+#include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/ip.h> 
-#include <errno.h>
-#include <fcntl.h>
 
-#include <getopt.h>
 #include "protocol.h"
 #include "demotool.h"
+
+#ifdef __AMIGA__
+/* Disable fancy CTRL-C handling */
+void _chkabort(void)
+{
+}
+#endif
 
 static SOCK_T open_connection(char *name, uint16_t port)
 {
@@ -65,10 +80,15 @@ static SOCK_T open_connection(char *name, uint16_t port)
         printf("**Error: opening socket failed.\n");
         return DT_ERR_CLIENT | DT_ERR_SOCKET_OPEN;
     }
+#ifndef __AMIGA__
 	if ((opt = fcntl (sock, F_GETFL, NULL)) < 0) {
 		return DT_ERR_CLIENT | DT_ERR_FCNTL;
 	}
 	if (fcntl (sock, F_SETFL, opt | O_NONBLOCK) < 0) {
+#else
+	opt = 1;
+	if (IoctlSocket(sock, FIONBIO, &opt) != 0) {
+#endif
 		return DT_ERR_CLIENT | DT_ERR_FCNTL;
 	}
 
@@ -83,7 +103,11 @@ static SOCK_T open_connection(char *name, uint16_t port)
             tv.tv_usec = 0;
             FD_ZERO (&wait_set);
 			FD_SET (sock, &wait_set);
+#ifndef __AMIGA__
             ret = select (sock + 1, NULL, &wait_set, NULL, &tv);
+#else
+			ret = WaitSelect(sock + 1, NULL, &wait_set, NULL, &tv, NULL);
+#endif
         } else {
             printf("**Error: connect() failed %d\n",errno);
             sock = DT_ERR_CLIENT | DT_ERR_CONNECT;
@@ -105,18 +129,27 @@ static SOCK_T open_connection(char *name, uint16_t port)
         goto open_connection_exit;
     }
     if (val != 0) {
-        printf("**Error: connect() failed %d\n",val);
+        printf("**Error: connect() failed#2 %d\n",val);
         sock = DT_ERR_CLIENT | DT_ERR_CONNECT_OTHER;
         goto open_connection_exit;
     }
+#ifndef __AMIGA__
     if (fcntl(sock, F_SETFL, opt) < 0) {
+#else
+	opt = 0;
+	if (IoctlSocket(sock, FIONBIO, &opt) != 0) {
+#endif
         sock = DT_ERR_CLIENT | DT_ERR_FCNTL;
         goto open_connection_exit;
     }
     return sock;
 
 open_connection_exit:
+#ifndef __AMIGA__
     close(sock);
+#else
+	CloseSocket(sock);
+#endif
     return sock;
 }
 
@@ -286,9 +319,8 @@ static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts,  char* name)
     if ((hdr = prepare_header(p_opts,&hdr_len)) == NULL) {
         return DT_ERR_MALLOC;
     }
-    if ((ret = handshake(s, hdr, hdr_len)) >= 0) {
-    } else {
-        printf("**Error: handshake failed %d\n",ret);
+    if ((ret = handshake(s, hdr, hdr_len)) & DT_ERR_CLIENT) {
+        printf("**Error: handshake failed %lu\n",ret);
         goto lsg0_exit;
     }
 
@@ -438,7 +470,7 @@ static void usage(char** argv)
             "  lsg1               Execute 'file' using Internaloadsegplugin.\n"
             "  adr0               Execute 'file' using absolute adderess plugin.\n"
             "  adf0               Create a disk from 'file' using adf plugin.\n\n"
-            "  peek               Dumo memory to 'file' using peek plugin.\n\n"
+            "  peek               Dump memory to 'file' using peek plugin.\n\n"
             "Where [options] are:\n"
             "  --version,-v x.y   Minimum or exact plugin version, e.g. '1.2'.\n"
             "  --file,-f file     File to send to a remote Amiga or to save to\n"
@@ -489,11 +521,19 @@ int main(int argc, char** argv)
     file = NULL;
 
     /* check for options for plugins */
+#ifdef __AMIGA__
+	optind = 1;
+	optreset = 1;
+#endif
 
     while ((ch = getopt_long(argc, argv, "v:l:j:red:p:f:h", long_options, NULL)) != -1) {
         switch (ch) {
         case 'v':   // --version,-v
+#ifndef __AMIGA__
             if (sscanf(optarg,"%d.%d",&s_opts.major,&s_opts.minor) != 2) {
+#else
+            if (sscanf(optarg,"%lu.%lu",&s_opts.major,&s_opts.minor) != 2) {
+#endif
                 usage(argv);
             }
             break;
@@ -512,7 +552,7 @@ int main(int argc, char** argv)
         case 'e':   // --exact,-e
             s_opts.flags |= DT_FLG_EXACT_VERSION;
             break;
-        case 'P':   // --port,-p
+        case 'p':   // --port,-p
             port = strtoul(optarg,NULL,0) & 0xffff;
             break;
         case 'd':   // --device,-d
@@ -541,6 +581,14 @@ int main(int argc, char** argv)
 
     optind++;
 
+#ifdef __AMIGA__
+	/* Link the local program's 'errno' variable to the stack's
+	 * internal 'errno' variable.
+	 */
+	SocketBaseTags(SBTM_SETVAL(SBTC_ERRNOPTR(sizeof(errno))),
+		&errno, TAG_END);
+#endif
+
     if ((sock = open_connection(argv[optind],port)) & DT_ERR_CLIENT) {
         printf("**Error: open_connection() failed with 0x%08x\n",sock);
         exit(1);
@@ -549,13 +597,17 @@ int main(int argc, char** argv)
     ret = plugin(sock,&s_opts,file);
 
     if (sock >= 0) {
+#ifndef __AMIGA__
         close(sock);
+#else
+		CloseSocket(sock);
+#endif
     }
 
     if (ret == 0) {
         return 0;
     } else {
-        printf("**Error: command returned 0x%08x.\n",ret);
+        printf("**Error: command returned 0x%08lx.\n",ret);
         exit(1);
     }
 }

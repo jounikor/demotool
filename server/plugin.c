@@ -145,14 +145,6 @@ struct plugin_common* find_plugin(struct plugin_header* list,
 	return NULL;
 }
 
-
-
-static LONG loadseg_send_cb(__reg("a0") uint8_t* buf, __reg("d0") LONG len)
-{
-	Printf("Callback called -> '%s'\n",buf);
-	return 0;
-}
-
 void dump_plugin(struct plugin_header *hdr)
 {
 	struct plugin_common* info;
@@ -176,7 +168,6 @@ int release_plugins(struct plugin_header *list)
 	}
 	return released;
 }
-
 
 int load_plugins(char *path, struct plugin_header **head)
 {

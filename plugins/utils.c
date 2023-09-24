@@ -106,13 +106,8 @@ char* get_tmp_filename(char* p_prefix, char* p_name, int name_len)
 	tmp = FastRand(s_seed);
 	s_seed ^= tmp;
 
-	/* strcpy() should return a ptr to \0 of the dst.. */
-#if 0
-	p_next = strcpy(p_name,p_prefix);
-#else
 	strcpy(p_name,p_prefix);
 	p_next = &p_name[n];
-#endif
 
 	for (n = 0; n < 8; n++) {
 		*p_next++ = s_i2h[tmp & 0xf];

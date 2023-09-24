@@ -44,9 +44,9 @@
 
 #define	LOADSEG_FILENAME_LEN	15+8+1
 
-struct loadseg_plugin {
-	struct plugin_common common;
-};
+//struct loadseg_plugin {
+//	struct plugin_common common;
+//};
 
 typedef struct context {
 	recv_cb recv;
