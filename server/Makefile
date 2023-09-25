@@ -8,7 +8,7 @@
 CC := vc
 MAKE := make
 LDFLAGS :=
-CFLAGS := +aos68k -cpu=68000 -c99 -Inetinclude: -I../inc -I../plugins
+CFLAGS := +aos68k -sd -sc -O2 -cpu=68000 -c99 -Inetinclude: -I../inc -I../plugins
 LIBDIR := 
 LIBS :=
 RM := delete

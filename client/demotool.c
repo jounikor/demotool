@@ -208,7 +208,7 @@ static int add_extension(uint8_t type, uint8_t* hdr, char* ext, int len)
 static dt_header_t* prepare_header(dt_options_t* p_opt, int* final_len)
 {
     char ver_len;
-    dt_header_t* hdr;
+    dt_header_t* p_hdr;
     int header_len = sizeof(dt_header_t);
     int extension_len = 0;
     int n;
@@ -224,7 +224,7 @@ static dt_header_t* prepare_header(dt_options_t* p_opt, int* final_len)
         printf("**Error: header size too big.\n");
         return NULL;
     }
-    if ((hdr = malloc(header_len + extension_len + 4)) == NULL) {
+    if ((p_hdr = malloc(header_len + extension_len + 4)) == NULL) {
         printf("**Error: malloc() failed.");
         return NULL;
     }
@@ -234,39 +234,40 @@ static dt_header_t* prepare_header(dt_options_t* p_opt, int* final_len)
     ver_len |= DT_HDR_VERSION;
 
     /* Fill in header statics */
-    hdr->hdr_tag_len_ver[0] = 'H';
-    hdr->hdr_tag_len_ver[1] = 'D';
-    hdr->hdr_tag_len_ver[2] = 'R';
-    hdr->hdr_tag_len_ver[3] = ver_len;
+    p_hdr->hdr_tag_len_ver[0] = 'H';
+    p_hdr->hdr_tag_len_ver[1] = 'D';
+    p_hdr->hdr_tag_len_ver[2] = 'R';
+    p_hdr->hdr_tag_len_ver[3] = ver_len;
     
     /* Requested plugin information */
-    strncpy(&hdr->plugin_tag_ver[0],p_opt->plugin,4);
-    hdr->major = p_opt->major & 0xff;
-    hdr->minor = p_opt->minor & 0xff;
-    hdr->flags = htonl(p_opt->flags);
-    hdr->addr  = htonl(p_opt->addr);
-    hdr->jump  = htonl(p_opt->jump);
-    hdr->size  = htonl(p_opt->size);
+    strncpy(&p_hdr->plugin_tag_ver[0],p_opt->plugin,4);
+    p_hdr->major = p_opt->major & 0xff;
+    p_hdr->minor = p_opt->minor & 0xff;
+	p_hdr->reserved = 0;
+    p_hdr->flags = htonl(p_opt->flags);
+    p_hdr->addr  = htonl(p_opt->addr);
+    p_hdr->jump  = htonl(p_opt->jump);
+    p_hdr->size  = htonl(p_opt->size);
 
     /* Add extensions */
     n = 0;
 
     if (p_opt->flags & DT_FLG_EXTENSION) {
         if (p_opt->device) {
-            n += add_extension(DT_EXT_DEVICE_NAME, &hdr->extension[n],
+            n += add_extension(DT_EXT_DEVICE_NAME, &p_hdr->extension[n],
                 p_opt->device, strlen(p_opt->device));
         }
     
         /* round up to next 4 bytes */
         while (n & 3) {
             /* add 0 length padding bytes.. could use length too */
-            n += add_extension(DT_EXT_PADDING, &hdr->extension[n], NULL, 0);
+            n += add_extension(DT_EXT_PADDING, &p_hdr->extension[n], NULL, 0);
         }
     }
     
     header_len += n;
     *final_len = header_len;
-    return hdr;
+    return p_hdr;
 }
 
 static uint32_t get_file_read_size(char* name, FILE** pp_fh, bool close_on_return)
@@ -301,13 +302,16 @@ static uint32_t open_file_write(char* name, FILE** fh)
 }
 
 
+#define TMP_BUF_LEN 1023
+static uint8_t s_tmp_buf[TMP_BUF_LEN];
+
 static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts,  char* name)
 {
     uint32_t ret;
     uint32_t size;
     int hdr_len;
+	int len, cnt;
     FILE *fh;
-    uint8_t *send_buf = NULL;
     dt_header_t* hdr = NULL;
 
     size = get_file_read_size(name, &fh, false);
@@ -326,22 +330,25 @@ static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts,  char* name)
 
     /* read file in and send it over.. */
 
-    if ((send_buf = malloc(size)) == NULL) {
-        ret = DT_ERR_CLIENT | DT_ERR_MALLOC;
-        goto lsg0_exit;
-    }
-    if (fread(send_buf, 1, size, fh) != size) {
-        printf("Err1\n");
+	cnt = 0;
+
+	while ((len = fread(s_tmp_buf, 1, TMP_BUF_LEN, fh)) > 0) {
+		cnt += len;
+		printf("\rSending %6d/%6d of '%s'",cnt, (int)size, name);
+		fflush(stdout);
+	    if (send(s, s_tmp_buf, len, 0) != len) {
+    	    ret = DT_ERR_CLIENT | DT_ERR_SEND;
+        	goto lsg0_exit;
+    	}
+	}
+
+	printf("\n");
+
+	if (feof(fh) == 0) {
         ret = DT_ERR_CLIENT | DT_ERR_FILE_IO;
         goto lsg0_exit;
     }
-    if (send(s, send_buf, size, 0) != size) {
-        printf("Err2\n");
-        ret = DT_ERR_CLIENT | DT_ERR_SEND;
-        goto lsg0_exit;
-    }
     if (recv(s, &ret, 4, 0) != 4) {
-        printf("Err3\n");
         ret = DT_ERR_CLIENT | DT_ERR_RECV;
     } else {
         ret = ntohl(ret);
@@ -349,9 +356,6 @@ static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts,  char* name)
 lsg0_exit:
     if (hdr) {
         free(hdr);
-    }
-    if (send_buf) {
-        free(send_buf);
     }
 
     fclose(fh);
@@ -382,34 +386,34 @@ static uint32_t quit_remote(SOCK_T s, dt_options_t* p_opts,  char* name)
 {
     /* this plugin ignores the possible file */
     static char* command = DT_HDR_TAG_CMD_QUIT;
-    char reply[4];
+    uint32_t reply;
     int n;
 
     if (send(s,command,4,0) != 4) {
         return DT_ERR_CLIENT | DT_ERR_SEND;
     }
-    if (recv(s,reply,4,0) != 4) {
+    if (recv(s,&reply,4,0) != 4) {
         return DT_ERR_CLIENT | DT_ERR_RECV;
     }
 
-    return DT_ERR_OK;
+    return ntohl(reply);
 }
 
 static uint32_t reboot_remote(SOCK_T s, dt_options_t* p_opts, char* name)
 {
     /* this plugin ignores the possible file */
     static char* command = DT_HDR_TAG_CMD_REBOOT;
-    char reply[4];
+    uint32_t reply;
     int n;
 
     if (send(s,command,4,0) != 4) {
         return DT_ERR_CLIENT | DT_ERR_SEND;
     }
-    if (recv(s,reply,4,0) != 4) {
+    if (recv(s,&reply,4,0) != 4) {
         return DT_ERR_CLIENT | DT_ERR_RECV;
     }
 
-    return DT_ERR_OK;
+    return ntohl(reply);
 }
 
 static plugin_t validate_command(char* name)

@@ -108,7 +108,7 @@ static LONG local_done(__reg("a0") void* ctx)
 
 
 #define TMP_BUF_LEN 1024
-static s_tmp_buf[TMP_BUF_LEN];
+static uint8_t s_tmp_buf[TMP_BUF_LEN];
 
 static LONG local_exec(__reg("a0") void* ctx)
 {

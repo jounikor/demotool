@@ -11,7 +11,7 @@ MAKE := make
 ifeq ($(OS),__AMIGA__)
 	CC := vc
 	LDFLAGS := +aos68k -lauto
-	CFLAGS :=  +aos68k -cpu=68000 -c99 -Inetinclude: -I../inc -I../plugins -D$(OS)
+	CFLAGS :=  +aos68k -sd -sc -O2 -cpu=68000 -c99 -Inetinclude: -I../inc -I../plugins -D$(OS)
 	LIBDIR := 
 	LIBS :=
 	RM := delete
