@@ -305,7 +305,7 @@ static uint32_t open_file_write(char* name, FILE** fh)
 #define TMP_BUF_LEN 1024
 static uint8_t s_tmp_buf[TMP_BUF_LEN];
 
-static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts,  char* name)
+static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts)
 {
     uint32_t ret;
     uint32_t size;
@@ -314,13 +314,15 @@ static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts,  char* name)
     FILE *fh;
     dt_header_t* hdr = NULL;
 
-    size = get_file_read_size(name, &fh, false);
+    size = get_file_read_size(p_opts->file, &fh, false);
     p_opts->size = size;
 
     if (size & DT_ERR_CLIENT) {
+        fclose(fh);
         return size;
     }
     if ((hdr = prepare_header(p_opts,&hdr_len)) == NULL) {
+        fclose(fh);
         return DT_ERR_MALLOC;
     }
     if ((ret = handshake(s, hdr, hdr_len)) & DT_ERR_CLIENT) {
@@ -334,7 +336,7 @@ static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts,  char* name)
 
 	while ((len = fread(s_tmp_buf, 1, TMP_BUF_LEN, fh)) > 0) {
 		cnt += len;
-		printf("\rSending %6d/%6d of '%s'",cnt, (int)size, name);
+		printf("\rSending %6d/%6d of '%s'",cnt, (int)size, p_opts->file);
 		fflush(stdout);
 	    if (send(s, s_tmp_buf, len, 0) != len) {
     	    ret = DT_ERR_CLIENT | DT_ERR_SEND;
@@ -361,27 +363,77 @@ lsg0_exit:
     return ret;
 }
 
-static uint32_t lsg1(SOCK_T s, dt_options_t* p_opts,  char* name)
+static uint32_t lsg1(SOCK_T s, dt_options_t* p_opts)
 {
-    return lsg0(s, p_opts, name);
+    return lsg0(s, p_opts);
 }
 
-static uint32_t adr0(SOCK_T s, dt_options_t* p_opts,  char* name)
+static uint32_t adr0(SOCK_T s, dt_options_t* p_opts)
 {
-    return lsg0(s, p_opts, name);
+    return lsg0(s, p_opts);
 }
 
-static uint32_t adf0(SOCK_T s, dt_options_t* p_opts,  char* name)
+static uint32_t adf0(SOCK_T s, dt_options_t* p_opts)
 {
-    return lsg0(s, p_opts, name);
+    return lsg0(s, p_opts);
 }
 
-static uint32_t peek(SOCK_T s, dt_options_t* p_opts,  char* name)
+static uint32_t peek(SOCK_T s, dt_options_t* p_opts)
 {
-    return DT_ERR_CLIENT | DT_ERR_NOT_IMPLEMENTED;
+    uint32_t ret;
+    uint32_t size;
+    int hdr_len;
+	int len, cnt;
+    FILE *fh;
+    dt_header_t* p_hdr = NULL;
+
+    if ((fh = fopen(p_opts->file,"wb")) == NULL) {
+        return DT_ERR_CLIENT | DT_ERR_FILE_OPEN;
+    }
+    if ((p_hdr = prepare_header(p_opts,&hdr_len)) == NULL) {
+        fclose(fh);
+        return DT_ERR_MALLOC;
+    }
+
+    /* post fix header flags.. no running code involved */
+    p_hdr->flags |= DT_FLG_NO_RUN;
+
+    if ((ret = handshake(s, p_hdr, hdr_len)) & DT_ERR_CLIENT) {
+        printf("**Error: handshake failed %lu\n",ret);
+        goto peek_exit;
+    }
+
+    /* read data and write it into the file */
+
+	cnt = 0;
+    size = p_hdr->size;
+
+	while ((len = recv(s, s_tmp_buf, TMP_BUF_LEN, 0)) > 0) {
+		cnt += len;
+		printf("\rReading %6d/%6d to '%s'",cnt, (int)size, p_opts->file);
+		fflush(stdout);
+        if (fwrite(s_tmp_buf, 1, len, fh) != len) {
+    	    ret = DT_ERR_CLIENT | DT_ERR_FILE_IO;
+            break;
+    	}
+	}
+
+	printf("\n");
+
+    if (len < 0) {
+        printf("**Error: recv() failed with %d\n",errno);
+        ret = DT_ERR_RECV;
+    }
+peek_exit:
+    if (p_hdr) {
+        free(p_hdr);
+    }
+
+    fclose(fh);
+    return ret;
 }
 
-static uint32_t quit_remote(SOCK_T s, dt_options_t* p_opts,  char* name)
+static uint32_t quit_remote(SOCK_T s, dt_options_t* p_opts)
 {
     /* this plugin ignores the possible file */
     static char* command = DT_HDR_TAG_CMD_QUIT;
@@ -398,7 +450,7 @@ static uint32_t quit_remote(SOCK_T s, dt_options_t* p_opts,  char* name)
     return ntohl(reply);
 }
 
-static uint32_t reboot_remote(SOCK_T s, dt_options_t* p_opts, char* name)
+static uint32_t reboot_remote(SOCK_T s, dt_options_t* p_opts)
 {
     /* this plugin ignores the possible file */
     static char* command = DT_HDR_TAG_CMD_REBOOT;
@@ -415,8 +467,10 @@ static uint32_t reboot_remote(SOCK_T s, dt_options_t* p_opts, char* name)
     return ntohl(reply);
 }
 
-static plugin_t validate_command(char* name)
+static plugin_t validate_command(const dt_options_t *p_opts)
 {
+    char *name = p_opts->plugin;
+
     /* oh right.. this could be more 'advanced' but.. ;) */
     if (!strcmp("lsg0",name)) {
         return lsg0;
@@ -431,6 +485,10 @@ static plugin_t validate_command(char* name)
         return adr0;
     }
     if (!strcmp("peek",name)) {
+        if (p_opts->file == NULL) {
+            printf("**Error: no save file name\n");
+            return NULL;
+        }
         return peek;
     }
 
@@ -451,11 +509,11 @@ static const struct option long_options[] = {
     {"file",    required_argument,  0, 'f' },
     {"load",    required_argument,  0, 'l' },
     {"jump",    required_argument,  0, 'j' },
+    {"size",    required_argument,  0, 's' },
     {"reboot",  no_argument,        0, 'r' },
     {"exact",   no_argument,        0, 'e' },
     {"device",  required_argument,  0, 'd' },
     {"port",    required_argument,  0, 'P' },
-    {"plugin",  required_argument,  0, 'p' },
     {"help",    no_argument,        0, 'h' },
     {"no-run",  no_argument,        0, 'n' },
     {0,0,0,0}
@@ -473,7 +531,7 @@ static void usage(char** argv)
             "  lsg0               Execute 'file' using loadseg plugin.\n"
             "  lsg1               Execute 'file' using Internaloadsegplugin.\n"
             "  adr0               Execute 'file' using absolute adderess plugin.\n"
-            "  adf0               Create a disk from 'file' using adf plugin.\n\n"
+            "  adf0               Create a disk from 'file' using adf plugin.\n"
             "  peek               Dump memory to 'file' using peek plugin.\n\n"
             "Where [options] are:\n"
             "  --version,-v x.y   Minimum or exact plugin version, e.g. '1.2'.\n"
@@ -484,6 +542,7 @@ static void usage(char** argv)
             "                     plugins can ignore this option.\n"
             "  --jump,-j addr     Address to start loaded 'file'. Enter in\n"
             "                     hex. Some plugins can ignore this option.\n"
+            "  --size,-s size     Number of bytes to 'peek' from address 'load'\n"
             "  --reboot,-r        After running the 'file' reboot remote Amiga.\n"
             "  --exact,-e         Version match must be exact.\n"
             "  --device,-d name   Name of the device on Amiga. Some plugins can\n"
@@ -521,7 +580,7 @@ int main(int argc, char** argv)
     s_opts.size = 0;
     s_opts.major = 0;
     s_opts.minor = 0;
-    file = NULL;
+    s_opts.file = NULL;
 
     /* check for options for plugins */
 #ifdef __AMIGA__
@@ -529,7 +588,7 @@ int main(int argc, char** argv)
 	optreset = 1;
 #endif
 
-    while ((ch = getopt_long(argc, argv, "v:l:j:red:p:f:hn", long_options, NULL)) != -1) {
+    while ((ch = getopt_long(argc, argv, "v:l:j:red:p:f:hns:", long_options, NULL)) != -1) {
         switch (ch) {
         case 'v':   // --version,-v
 #ifndef __AMIGA__
@@ -544,13 +603,16 @@ int main(int argc, char** argv)
             s_opts.flags |= DT_FLG_NO_RUN;
             break;
         case 'f':   // --file,-f
-            file = optarg;
+            s_opts.file = optarg;
             break;
         case 'l':   // --load,-l
             s_opts.addr = strtoul(optarg,NULL,0);
             break;
         case 'j':   // --jump,-j
             s_opts.jump = strtoul(optarg,NULL,0);
+            break;
+        case 's':   // --size,-s
+            s_opts.size = strtoul(optarg,NULL,0);
             break;
         case 'r':   // --reboot,-r
             s_opts.flags |= DT_FLG_REBOOT_ON_EXIT;
@@ -568,8 +630,9 @@ int main(int argc, char** argv)
             s_opts.flags |= DT_FLG_EXTENSION;
             s_opts.device = optarg;
             break;
-        case 'h':
         default:
+            printf("Error: invalid option\n");
+        case 'h':
             usage(argv);
             break;
         }
@@ -581,11 +644,13 @@ int main(int argc, char** argv)
     }
 
     /* find the command.. */
-    if ((plugin = validate_command(argv[optind])) == NULL) {
+    s_opts.plugin = argv[optind];
+
+    if ((plugin = validate_command(&s_opts)) == NULL) {
+        printf("**Error: invalid command '%s' or invalid/missing options\n",s_opts.plugin);
         usage(argv);
     }
 
-    s_opts.plugin = argv[optind];
     optind++;
 
 #ifdef __AMIGA__
@@ -601,7 +666,7 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    ret = plugin(sock,&s_opts,file);
+    ret = plugin(sock,&s_opts);
 
     if (sock >= 0) {
 #ifndef __AMIGA__
@@ -614,7 +679,7 @@ int main(int argc, char** argv)
     if (ret == 0) {
         return 0;
     } else {
-        printf("**Error: command returned 0x%08lx.\n",ret);
+        printf("**Error: command returned 0x%08lx\n",ret);
         exit(1);
     }
 }

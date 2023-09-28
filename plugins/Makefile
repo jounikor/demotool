@@ -27,10 +27,20 @@ ADDR_SRC    := addr_plugin.c
 ADDR_OBJ    := addr_plugin.o
 ADDR_INC    := addr_plugin.h
 
+PEEK_EXE    := peek_plugin.exe
+PEEK_SRC    := peek_plugin.c
+PEEK_OBJ    := peek_plugin.o
+PEEK_INC    := peek_plugin.h
+
 PLUGIN_HEADER := plugin_header.o
 
 # Make all targets..
-all: $(INTERNALLOADSEG_EXE) $(LOADSEG_EXE) $(ADF_EXE) $(ADDR_EXE)  $(PLUGIN_HEADER)
+all: 	$(INTERNALLOADSEG_EXE) \
+	$(LOADSEG_EXE) \
+	$(ADF_EXE) \
+	$(ADDR_EXE)  \
+	$(PEEK_EXE) \
+	$(PLUGIN_HEADER)
 
 
 # The generic plugin header for all plugins
@@ -48,6 +58,9 @@ $(ADF_EXE): $(PLUGIN_HEADER) $(ADF_OBJ)
 
 $(ADDR_EXE): $(PLUGIN_HEADER) $(ADDR_OBJ)
 	vc $(PLUGIN_LDOPTS) $(PLUGIN_HEADER) $(ADDR_OBJ) -o $(ADDR_EXE)
+
+$(PEEK_EXE): $(PLUGIN_HEADER) $(PEEK_OBJ)
+	vc $(PLUGIN_LDOPTS) $(PLUGIN_HEADER) $(PEEK_OBJ) -o $(PEEK_EXE)
 
 
 # Cleanups

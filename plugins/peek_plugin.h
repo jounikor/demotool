@@ -1,5 +1,7 @@
 /*
- * (c) 2023 by Jouni 'Mr.Spiv' Korhonen
+ * v0.1 (c) 2023 Jouni 'Mr.Spiv' Korhonen
+ * 
+ * =======================================================================
  *
  * This is free and unencumbered software released into the public domain.
  *
@@ -26,28 +28,26 @@
  *
  * For more information, please refer to <http://unlicense.org/>
  */
-#ifndef _DEMOTOOL_H_INCLUDED
-#define _DEMOTOOL_H_INCLUDED
+#ifndef _PEEK_PLUGIN_H_INCLUDED
+#define _PEEK_PLUGIN_H_INCLUDED
 
-#include <stdio.h>
+#include <dos/dos.h>
+
 #include <stdint.h>
-#include <stdbool.h>
+#include "plugin_header.h"
 
-#define SOCK_T int
 
-typedef struct dt_options {
-    uint32_t addr;
-    uint32_t jump;
-    uint32_t flags;
-    uint32_t size;
-    char* device;
-    char* plugin;
-	char* file;
-    uint32_t major;
-    uint32_t minor;
-} dt_options_t;
+#define PEEK_PLUGIN_MAJOR	0
+#define PEEK_PLUGIN_MINOR	1
+#define PEEK_PLUGIN_ID		0x7065656B	/* "peek" */
+#define PEEK_RESERVED 		0
 
-typedef uint32_t (*plugin_t)(SOCK_T,dt_options_t*);
+typedef struct context {
+	recv_cb recv;
+	send_cb send;
+	dt_header_t *p_hdr;
+	void *user;
+} context_t;
 
-#endif /* _DEMOTOOL_H_INCLUDED */
+#endif 	/* _PEEK_PLUGIN_H_INCLUDED */
 
