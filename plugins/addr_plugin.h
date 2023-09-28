@@ -39,12 +39,16 @@
 
 #define ADDR_PLUGIN_MAJOR	0
 #define ADDR_PLUGIN_MINOR	1
-#define ADDR_PLUGIN_ID		0x41445230	/* "ADR0" */
+#define ADDR_PLUGIN_ID		0x61647230	/* "ADR0" */
 #define ADDR_RESERVED 		0
 
-struct addr_plugin {
-	struct plugin_common common;
-};
+typedef struct context {
+	recv_cb recv;
+	send_cb send;
+	dt_header_t *p_hdr;
+	void *user;
+	LONG errno;
+} context_t;
 
 #endif 	/* _ADDR_PLUGIN_H_INCLUDED */
 

@@ -38,15 +38,11 @@
 #include "protocol.h"
 
 #define LOADSEG_PLUGIN_MAJOR	0
-#define LOADSEG_PLUGIN_MINOR	1
-#define LOADSEG_PLUGIN_ID		0x4c534730	/* "LSG0" */
+#define LOADSEG_PLUGIN_MINOR	2
+#define LOADSEG_PLUGIN_ID		0x6C736730	/* "LSG0" */
 #define LOADSEG_RESERVED 		0
 
 #define	LOADSEG_FILENAME_LEN	15+8+1
-
-//struct loadseg_plugin {
-//	struct plugin_common common;
-//};
 
 typedef struct context {
 	recv_cb recv;

@@ -39,12 +39,20 @@
 
 #define INTERNALLOADSEG_PLUGIN_MAJOR	0
 #define INTERNALLOADSEG_PLUGIN_MINOR	1
-#define INTERNALLOADSEG_PLUGIN_ID		0x4c534731
+#define INTERNALLOADSEG_PLUGIN_ID		0x6C736731
 #define INTERNALLOADSEG_RESERVED 		0
 
 struct internalloadseg_plugin {
 	struct plugin_common common;
 };
+
+typedef struct context {
+	recv_cb recv;
+	send_cb send;
+	dt_header_t *p_hdr;
+	void *user;
+} context_t;
+
 
 #endif 	/* _INTERNALLOADSEG_PLUGIN_H_INCLUDED */
 

@@ -300,11 +300,12 @@ static int loader_main(struct dt_cfg* p_cfg, struct plugin_header* list)
 
 	if (ctx == NULL) {
 		/* initializing the plugin failed.. */
-		Printf("**Error: Initializing '%s' failed with %d\n",
-			plugin->description,plugin->errno(NULL));
+        uint32_t init_error = plugin->errno(ctx);
+		Printf("**Error: Initializing '%s' failed with %lu\n",
+			plugin->description,init_error);
 		plugin->done(NULL);
 		FreeVec(p_hdr);
-		send_response(p_cfg,DT_ERR_INIT_FAILED);
+		send_response(p_cfg,init_error);
 		return DT_CMD_PLUGIN;
 	}
 
@@ -333,7 +334,7 @@ static int loader_main(struct dt_cfg* p_cfg, struct plugin_header* list)
 	 * it was plugin execution responsibility to send an error
 	 * back to the client..
 	 */
-	if (ret == DT_ERR_OK) {
+	if (!(p_hdr->flags & DT_FLG_NO_RUN) && ret == DT_ERR_OK) {
 		if (debug) {
 			Printf("Calling plugin run() with %lds delay\n",p_cfg->delay);
 		}

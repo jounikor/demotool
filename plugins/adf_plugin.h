@@ -38,12 +38,20 @@
 
 #define ADF_PLUGIN_MAJOR	0
 #define ADF_PLUGIN_MINOR	1
-#define ADF_PLUGIN_ID		0x41444630	/* "ADF0" */
+#define ADF_PLUGIN_ID		0x61646630	/* "ADF0" */
 #define ADF_RESERVED 		0
 
 struct adf_plugin {
 	struct plugin_common common;
 };
+
+typedef struct context {
+	recv_cb recv;
+	send_cb send;
+	dt_header_t *p_hdr;
+	void *user;
+	LONG errno;
+} context_t;
 
 /* function prototypes */
 

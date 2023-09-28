@@ -38,18 +38,18 @@
 #include "loadseg_plugin.h"
 #include "utils.h"
 
-
 struct ExecBase *SysBase   = NULL;
 struct DosLibrary *DOSBase = NULL;
+ULONG g_errno = DT_ERR_OK;
 
-static void* local_init(__reg("a0") recv_cb r,
+__saveds static void* local_init(__reg("a0") recv_cb r,
 	__reg("a1") send_cb s,
 	__reg("a2") dt_header_t *h,
 	__reg("a3") void* p);
-static LONG local_done(__reg("a0") void* ctx);
-static LONG local_exec(__reg("a0") void* ctx);
-static LONG local_run(__reg("a0") void* ctx);
-static LONG local_errno(__reg("a0") void* ctx);
+__saveds static LONG local_done(__reg("a0") void* ctx);
+__saveds static LONG local_exec(__reg("a0") void* ctx);
+__saveds static LONG local_run(__reg("a0") void* ctx);
+__saveds static LONG local_errno(__reg("a0") void* ctx);
 
 const struct plugin_common plugin_info = {
 	LOADSEG_PLUGIN_ID,
@@ -57,7 +57,7 @@ const struct plugin_common plugin_info = {
 	LOADSEG_PLUGIN_MINOR,
 	LOADSEG_RESERVED,
 	"$VER: loadseg_plugin "MSTR(LOADSEG_PLUGIN_MAJOR)"."MSTR(LOADSEG_PLUGIN_MINOR)" (23.9.2023) by Jouni 'Mr.Spiv' Korhonen",
-	"Demotool Loadseg() plugin",
+	"OTN Loadseg() plugin",
 
 	local_init,
 	local_exec,
@@ -66,7 +66,7 @@ const struct plugin_common plugin_info = {
 	local_errno
 };
 
-static void* local_init(__reg("a0") recv_cb r, __reg("a1") send_cb s, __reg("a2") dt_header_t *h, __reg("a3") void* p)
+__saveds static void* local_init(__reg("a0") recv_cb r, __reg("a1") send_cb s, __reg("a2") dt_header_t *h, __reg("a3") void* p)
 {
 	context_t *p_ctx;
 	SysBase = *((struct ExecBase **)4);
@@ -82,12 +82,14 @@ static void* local_init(__reg("a0") recv_cb r, __reg("a1") send_cb s, __reg("a2"
 			p_ctx->filename[0] = '\0';
 			return p_ctx;
 		}
+        g_errno = DT_ERR_MALLOC;
+        return NULL;
 	}
-
+    g_errno = DT_ERR_OPENLIBRARY;
 	return NULL;
 }
 
-static LONG local_done(__reg("a0") void* ctx)
+__saveds static LONG local_done(__reg("a0") void* ctx)
 {
 	context_t *p_ctx = ctx;
 
@@ -110,7 +112,7 @@ static LONG local_done(__reg("a0") void* ctx)
 #define TMP_BUF_LEN 1024
 static uint8_t s_tmp_buf[TMP_BUF_LEN];
 
-static LONG local_exec(__reg("a0") void* ctx)
+__saveds static LONG local_exec(__reg("a0") void* ctx)
 {
 	context_t *p_ctx = ctx;
 	uint32_t ret;
@@ -189,7 +191,7 @@ local_exec_exit:
 	return ret;
 }
 
-static  LONG local_run(__reg("a0") void* ctx)
+__saveds static  LONG local_run(__reg("a0") void* ctx)
 {
 	context_t *p_ctx = ctx;
 	typedef  void (*func)(void);
@@ -204,11 +206,8 @@ static  LONG local_run(__reg("a0") void* ctx)
 	return DT_ERR_OK;
 }
 
-static LONG local_errno(__reg("a0") void* ctx)
+__saveds static ULONG local_errno(__reg("a0") void* ctx)
 {
-	if (DOSBase) {
-		Printf("local_errno()\n");
-	}
-	return DT_ERR_OK;	
+	return g_errno;
 }
 

@@ -4,8 +4,8 @@
 #
 #
 
-PLUGIN_LDOPTS := -nostdlib -lamiga -sc
-PLUGIN_COPTS := +aos68k -sc -O2 -Inetinclude: -I../inc -cpu=68000 -c99
+PLUGIN_LDOPTS := -nostdlib -lamiga -sc -sd
+PLUGIN_COPTS := +aos68k -sc -sd  -O2 -Inetinclude: -I../inc -cpu=68000 -c99
 
 LOADSEG_EXE := loadseg_plugin.exe
 LOADSEG_SRC := loadseg_plugin.c utils.c

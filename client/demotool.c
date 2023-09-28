@@ -302,7 +302,7 @@ static uint32_t open_file_write(char* name, FILE** fh)
 }
 
 
-#define TMP_BUF_LEN 1023
+#define TMP_BUF_LEN 1024
 static uint8_t s_tmp_buf[TMP_BUF_LEN];
 
 static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts,  char* name)
@@ -342,8 +342,6 @@ static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts,  char* name)
     	}
 	}
 
-	printf("\n");
-
 	if (feof(fh) == 0) {
         ret = DT_ERR_CLIENT | DT_ERR_FILE_IO;
         goto lsg0_exit;
@@ -358,6 +356,7 @@ lsg0_exit:
         free(hdr);
     }
 
+	printf("\n");
     fclose(fh);
     return ret;
 }
@@ -458,6 +457,7 @@ static const struct option long_options[] = {
     {"port",    required_argument,  0, 'P' },
     {"plugin",  required_argument,  0, 'p' },
     {"help",    no_argument,        0, 'h' },
+    {"no-run",  no_argument,        0, 'n' },
     {0,0,0,0}
 };
 
@@ -490,6 +490,7 @@ static void usage(char** argv)
             "                     ignore this option. Max length is 15 characters.\n"
             "  --port,-p port     Port number of the server in a remote Amiga.\n"
             "                     Defaults to 9999.\n"
+            "  --no-run,-n        Do not run loaded absolute address 'file'\n" 
             "  --help,-h          This help output.\n\n"
             "Where inputs are:\n"
             "  destination        FQDN or IP-address of the remote server.\n"
@@ -514,8 +515,6 @@ int main(int argc, char** argv)
 
     /* defaults */
     port = DT_DEF_PORT;
-    s_opts.plugin = "LSG0";
-    plugin = lsg0;
     s_opts.device = NULL;
     s_opts.addr = 0;
     s_opts.jump = 0;
@@ -530,7 +529,7 @@ int main(int argc, char** argv)
 	optreset = 1;
 #endif
 
-    while ((ch = getopt_long(argc, argv, "v:l:j:red:p:f:h", long_options, NULL)) != -1) {
+    while ((ch = getopt_long(argc, argv, "v:l:j:red:p:f:hn", long_options, NULL)) != -1) {
         switch (ch) {
         case 'v':   // --version,-v
 #ifndef __AMIGA__
@@ -540,6 +539,9 @@ int main(int argc, char** argv)
 #endif
                 usage(argv);
             }
+            break;
+        case 'n':   // --no-run,-n
+            s_opts.flags |= DT_FLG_NO_RUN;
             break;
         case 'f':   // --file,-f
             file = optarg;
@@ -583,6 +585,7 @@ int main(int argc, char** argv)
         usage(argv);
     }
 
+    s_opts.plugin = argv[optind];
     optind++;
 
 #ifdef __AMIGA__

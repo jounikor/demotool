@@ -40,15 +40,16 @@
 
 struct ExecBase *SysBase   = NULL;
 struct DosLibrary *DOSBase = NULL;
+ULONG g_errno = DT_ERR_OK;
 
-static void* local_init(__reg("a0") recv_cb r,
+__saveds static void* local_init(__reg("a0") recv_cb r,
 	__reg("a1") send_cb s,
 	__reg("a2") dt_header_t *h,
 	__reg("a3") void* p);
-static LONG local_done(__reg("a0") void* ctx);
-static LONG local_exec(__reg("a0") void* ctx);
-static LONG local_run(__reg("a0") void* ctx);
-static LONG local_errno(__reg("a0") void* ctx);
+__saveds static LONG local_done(__reg("a0") void* ctx);
+__saveds static LONG local_exec(__reg("a0") void* ctx);
+__saveds static LONG local_run(__reg("a0") void* ctx);
+__saveds static ULONG local_errno(__reg("a0") void* ctx);
 
 const struct internalloadseg_plugin plugin_info = {
 	{
@@ -67,7 +68,7 @@ const struct internalloadseg_plugin plugin_info = {
 	}
 };
 
-static void* local_init(__reg("a0") recv_cb r, __reg("a1") send_cb s, __reg("a2") dt_header_t *h, __reg("a3") void* p)
+__saveds static void* local_init(__reg("a0") recv_cb r, __reg("a1") send_cb s, __reg("a2") dt_header_t *h, __reg("a3") void* p)
 {
 	SysBase = *((struct ExecBase **)4);
 
@@ -78,7 +79,7 @@ static void* local_init(__reg("a0") recv_cb r, __reg("a1") send_cb s, __reg("a2"
 	return DOSBase;
 }
 
-static LONG local_done(__reg("a0") void* ctx)
+__saveds static LONG local_done(__reg("a0") void* ctx)
 {
 	if (DOSBase) {
 		Printf("local_done()\n");
@@ -89,7 +90,7 @@ static LONG local_done(__reg("a0") void* ctx)
 }
 
 
-static LONG local_exec(__reg("a0") void* ctx)
+__saveds static LONG local_exec(__reg("a0") void* ctx)
 {
 	if (DOSBase) {
 		Printf("local_exec()\n");
@@ -97,7 +98,7 @@ static LONG local_exec(__reg("a0") void* ctx)
 	return DT_ERR_OK;
 }
 
-static LONG local_run(__reg("a0") void* ctx)
+__saveds static LONG local_run(__reg("a0") void* ctx)
 {
 	if (DOSBase) {
 		Printf("local_run()\n");
@@ -105,12 +106,9 @@ static LONG local_run(__reg("a0") void* ctx)
 	return DT_ERR_OK;
 }
 
-static LONG local_errno(__reg("a0") void* ctx)
+__saveds static ULONG local_errno(__reg("a0") void* ctx)
 {
-	if (DOSBase) {
-		Printf("local_errno()\n");
-	}
-	return DT_ERR_OK;	
+	return g_errno;
 }
 
 

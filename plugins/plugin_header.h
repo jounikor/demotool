@@ -89,7 +89,6 @@ struct plugin_common {
 			__reg("a1") send_cb s,
 			__reg("a2") dt_header_t *h,
 			__reg("a3") void* p);
-
 	LONG  (*exec)(__reg("a0") void* ctx);
 	/* Typically run() returns what the executed program returned */
 	LONG  (*run)(__reg("a0") void* ctx);
@@ -98,7 +97,7 @@ struct plugin_common {
 	 */
 	LONG  (*done)(__reg("a0") void* ctx);
 	/* must be able to handle case 'ctx == NULL' */
-	LONG  (*errno)(__reg("a0") void* ctx);
+	ULONG  (*errno)(__reg("a0") void* ctx);
 };
 
 #define INVALID_PLUGIN_ID 0
