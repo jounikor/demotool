@@ -36,7 +36,6 @@
 #include "addr_plugin.h"
 
 struct ExecBase *SysBase   = NULL;
-struct DosLibrary *DOSBase = NULL;
 ULONG g_errno = DT_ERR_OK;
 
 __saveds static void* local_init(__reg("a0") recv_cb r,
@@ -74,21 +73,15 @@ __saveds static void* local_init(__reg("a0") recv_cb r, __reg("a1") send_cb s, _
         g_errno = DT_ERR_HDR_INVALID;
         return NULL;
     }
-    if (DOSBase = (struct DosLibrary*)OpenLibrary("dos.library",36)) {
-        /* First some sanity tests */
-        if (p_ctx = AllocVec(sizeof(context_t), 0)) {
-            p_ctx->recv = r;
-            p_ctx->send = s;
-            p_ctx->p_hdr = h;
-            p_ctx->user = p;
-            return p_ctx;
-        }        
+    if (p_ctx = AllocVec(sizeof(context_t), 0)) {
+        p_ctx->recv = r;
+        p_ctx->send = s;
+        p_ctx->p_hdr = h;
+        p_ctx->user = p;
+        return p_ctx;
+    }        
 
-        g_errno = DT_ERR_MALLOC;
-        return NULL;
-    }
-
-    g_errno = DT_ERR_OPENLIBRARY;
+    g_errno = DT_ERR_MALLOC;
     return NULL;
 }
 
@@ -96,10 +89,6 @@ __saveds static LONG local_done(__reg("a0") void* ctx)
 {
     context_t *p_ctx = ctx;
 
-    if (DOSBase) {
-        CloseLibrary((struct Library*)DOSBase);
-        DOSBase = NULL;
-    }
     if (p_ctx) {
         FreeVec(p_ctx);
     }

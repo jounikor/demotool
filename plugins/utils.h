@@ -32,8 +32,10 @@
 #define _UTILS_H_INCLUDED
 
 #include <stdint.h>
+#include "protocol.h" 
 
 int find_extension(uint8_t *p_ext, int ext_len, uint8_t type, uint8_t *p_buf);
+int get_extensions_len(dt_header_t *p_hdr);
 char* get_tmp_filename(char* p_prefix, char* p_name, int name_len);
 
 #endif /* _UTILS_H_INCLUDED */

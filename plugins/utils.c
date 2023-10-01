@@ -35,7 +35,6 @@
 #include <clib/alib_protos.h>
 #include "utils.h"
 
-
 /**
  * \brief This function parses extensions from dt_header_t.
  *
@@ -75,6 +74,24 @@ int find_extension(uint8_t *p_ext, int ext_len,  uint8_t type, uint8_t *p_val)
 
 	return -1;
 }
+
+int get_extensions_len(dt_header_t *p_hdr)
+{
+    /* assume this is a valid header */
+    int len = p_hdr->hdr_tag_len_ver[3] & DT_HDR_LEN_MASK;
+    int ver = p_hdr->hdr_tag_len_ver[3] & DT_HDR_VER_MASK;
+
+    if (ver != 0) {
+        return -1;
+    }
+    if (len == 0) {
+        len = 256;
+    }
+
+    return len - sizeof(dt_header_t) + 4;
+}
+
+
 
 /**
  *
@@ -116,3 +133,5 @@ char* get_tmp_filename(char* p_prefix, char* p_name, int name_len)
 	*p_next = '\0';
 	return p_next;
 }
+
+

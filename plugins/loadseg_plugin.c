@@ -49,7 +49,7 @@ __saveds static void* local_init(__reg("a0") recv_cb r,
 __saveds static LONG local_done(__reg("a0") void* ctx);
 __saveds static LONG local_exec(__reg("a0") void* ctx);
 __saveds static LONG local_run(__reg("a0") void* ctx);
-__saveds static LONG local_errno(__reg("a0") void* ctx);
+__saveds static ULONG local_errno(__reg("a0") void* ctx);
 
 const struct plugin_common plugin_info = {
 	LOADSEG_PLUGIN_ID,
@@ -136,11 +136,11 @@ __saveds static LONG local_exec(__reg("a0") void* ctx)
 		}
 	}
 
-	/* build temp filename.. default it being in RAM: */
+	/* build temp filename.. default it being in T: */
 	if (override_dev) {
 		strcat(a_prefix,":");
 	} else {
-		strcpy(a_prefix,"RAM:");
+		strcpy(a_prefix,"T:");
 	}
 	if (get_tmp_filename(a_prefix,p_ctx->filename,LOADSEG_FILENAME_LEN) == NULL) {
 		Printf("**Error: get_tmp_filename() failed\n");

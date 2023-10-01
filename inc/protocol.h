@@ -188,6 +188,12 @@ typedef struct dt_header {
 #define DT_ERR_GETSOCKOPT       2008
 #define DT_ERR_CONNECT_OTHER    2009
 
+#define DT_ERR_CREATE_MSGPORT	4000
+#define DT_ERR_CREATE_IOREQ		4001
+#define DT_ERR_OPENDEVICE		4002
+#define DT_ERR_DISK_DEVICE		4003
+#define DT_ERR_DISK_IO			4096	/* + device error */
+
 
 #define DT_ERR_CLIENT           0x80000000  /* add this to denote client side */
 

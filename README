@@ -1,8 +1,28 @@
-
 (c) 2023 Jouni 'Mr.Spiv' Korhonen.
 
 A demotool for remote execution of Amiga exes and ADFs
-over the network from a PC/Mac..
+over the network from a PC/Mac/Amiga..
 
-Work in Progress.
+Currently implemented:
+* Client for sending / reading files 
+  - Compiles on Amiga (kick 2.x required)
+  - Compiles on Mac etc Berkeley sockets compliant OSes.
+
+* server
+  - Compiles on Amiga (kick 2.x required)
+
+* plugins
+  - Loadseg() executable launcher. 
+  - Absolute address launcher. This plugin can be used to load
+    arbitrary data into server Amiga RAM.
+  - ADF writer
+  - Peek to read arbitrary data from Server Amiga RAM to a
+    client side file.
+
+Work in Progress:
+* Generic cleanup of the code. It is rather messy in places.
+* Add function documentation.
+* InternalLoadSeg() executable launcher (just for the sake of it ;)
+
+
 

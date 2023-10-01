@@ -339,7 +339,12 @@ static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts)
 		printf("\rSending %6d/%6d of '%s'",cnt, (int)size, p_opts->file);
 		fflush(stdout);
 	    if (send(s, s_tmp_buf, len, 0) != len) {
-    	    ret = DT_ERR_CLIENT | DT_ERR_SEND;
+            /* check if we actually got an error from serrver side */
+            if (recv(s, &ret, 4, 0) == 4) {
+                ret = ntohl(ret);
+            } else {
+    	        ret = DT_ERR_CLIENT | DT_ERR_SEND;
+            }
         	goto lsg0_exit;
     	}
 	}
@@ -375,6 +380,8 @@ static uint32_t adr0(SOCK_T s, dt_options_t* p_opts)
 
 static uint32_t adf0(SOCK_T s, dt_options_t* p_opts)
 {
+    /* no running if ADF */
+    p_opts->flags |= DT_FLG_NO_RUN;
     return lsg0(s, p_opts);
 }
 

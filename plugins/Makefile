@@ -18,9 +18,9 @@ INTERNALLOADSEG_OBJ := internalloadseg_plugin.o
 INTERNALLOADSEG_INC := internalloadseg_plugin.h
 
 ADF_EXE     := adf_plugin.exe
-ADF_SRC     := adf_plugin.c
-ADF_OBJ     := adf_plugin.o
-ADF_INC     := adf_plugin.h
+ADF_SRC     := adf_plugin.c utils.c
+ADF_OBJ     := adf_plugin.o utils.o
+ADF_INC     := adf_plugin.h utils.h
 
 ADDR_EXE    := addr_plugin.exe
 ADDR_SRC    := addr_plugin.c
