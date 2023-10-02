@@ -64,4 +64,10 @@ typedef struct dt_cfg {
 	char *device;
 } dt_cfg_t;
 
+
+#define CONFIG __cfg
+#define CONFIG_PTR dt_cfg_t *CONFIG
+#define CONFIG_PTR_GET ((dt_cfg_t *)CONFIG)
+#define SocketBase CONFIG_PTR_GET->socketbase
+
 #endif /* _DEMOTOOL_H_INCLUDED */
