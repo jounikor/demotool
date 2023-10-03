@@ -34,15 +34,7 @@
 /*
  * Note: network order (==big endian) is assumed.
  *
- * The socket communication fixed protocol parts:
- *
- *  3      2 2      1 1      0 0      0
- *  1      4 3      6 5      8 7      0
- * +--------+--------+--------+--------+
- * |  'H'      'D'      'R'   | lenver | i.e. taglenver
- * +--------+--------+--------+--------+
- *
- * or
+ * FROM CLIENT TO SERVER =================================>
  *
  *  3      2 2      1 1      0 0      0
  *  1      4 3      6 5      8 7      0
@@ -50,25 +42,30 @@
  * |  'Q'      'U'      'I'      'T'   | to quit the server
  * +--------+--------+--------+--------+
  *
+ * or..
+ *
  *  3      2 2      1 1      0 0      0
  *  1      4 3      6 5      8 7      0
  * +--------+--------+--------+--------+
- * |  'R'      'B'      'O'      'T'   | to reboot the remore Amiga
+ * |  'R'      'B'      'O'      'T'   | to reboot the server
  * +--------+--------+--------+--------+
  *
- * lenver is coded as:
+ * or..
  *
- *   7 6 5 4 3 2 1 0
- *  +-+-+-+-+-+-+-+-+
- *  |  hdrlen   |ver| -> max size of the header is 256 bytes (0==256);
- *  +-+-+-+-+-+-+-+-+    hdrlen does not include taglenver.
- *
+ *  3      2 2      1 1      0 0      0
+ *  1      4 3      6 5      8 7      0
  * +--------+--------+--------+--------+
- * | requested plugin_id               | e.g. "LSG0"
+ * |  'H'      'D'      'R'   | lenver | to exchange a file with the client
+ * +--------+--------+--------+--------+
+ * :                                   :
+ *    Followed by the fixed header:
+ * :                                   :
+ * +--------+--------+--------+--------+
+ * | requested plugin_id               | e.g. "lsg0"
  * +--------+--------+--------+--------+
  * | major  | minor  |    reserved     | e.g. 1.0 as the minimum version
  * +--------+--------+--------+--------+
- * | flags                             | e.g. PLUGIN_FLAG_REBOOT_ON_EXIT
+ * | flags                             | e.g. DT_FLG_REBOOT_ON_EXIT
  * +--------+--------+--------+--------+
  * | data length (recv/send)           |
  * +--------+--------+--------+--------+
@@ -76,56 +73,68 @@
  * +--------+--------+--------+--------+
  * | jump address (may be NULL)        |
  * +--------+--------+--------+--------+
+ * : 0 or more octets of extensions..  :
+ * +-----------------------------------+
  *
- * Extensions 0 or more:
+ * Extensions are encoded as:
  * 
  *  7      4 3      0     
  * +--------+--------+            +--------+
  * |  type  | length | + length * |  byte  |
  * +--------+--------+   0 to 15  +--------+
  *                       
+ * lenver is coded as:
  *
- * 1) Server to Client:
+ *   7 6 5 4 3 2 1 0
+ *  +-+-+-+-+-+-+-+-+
+ *  |  hdrlen   |ver| -> max size of the header is 256 bytes (0==256);
+ *  +-+-+-+-+-+-+-+-+    hdrlen does not include taglenver.
  *
- * +--------+--------+--------+--------+
- * | response                          | e.g. 0L for OK
- * +--------+--------+--------+--------+
- *
- * Plugin specific part follows:
- *
- * 1) Data to recv or send
+ * SERVER TO CLIENT RESPONSES FOR COMMANDS <===============
  *
  * +--------+--------+--------+--------+
- * | data follows.. (not aligned)      |
- * :                                   :
+ * | response                          | e.g. DT_ERR_OK etc
  * +--------+--------+--------+--------+
  *
- * 2) Data receiver (client or server)
- *    sends a response after "data length"
- *    bytes have been received.
+ * PLUGIN CLIENT TO SERVER TO CLIENT PROTOCOLS <==========>
  *
- * +--------+--------+--------+--------+
- * | response                          | e.g. 0L for OK
- * +--------+--------+--------+--------+
+ * The protocol is _plugin_ specific.. You just need to make
+ * sure the plugin and the client for the matching plugin
+ * implement the same behavior.
  *
- * 3) response sender closes the connection first.
+ * See existing plugins for examples. Note that currently 
+ * LSG0, ADF0 and ADR0 plugins all share the same "protocol"
+ * i.e., the client sends 'size' bytes to the server and the
+ * server responses with 4 byte acknowledgement.
  *
+ * The PEEK plugin just sends 'size' bytes from the server
+ * to the client. No acknowledgements are used.
  *
+ * Another implementation note. If the client fails to send()
+ * data to the server it should try to read back the 4 byte
+ * acknowledgement as it likely contains the error reason.
  */
 
+/**
+ * @struct dt_header protocol.h
+ * @typedef struct dt_header dt_header_t
+ *
+ * The fixed header part for the client to server handshake.
+ */
 typedef struct dt_header {
-    char hdr_tag_len_ver[4];
-    char plugin_tag_ver[4];
-    uint8_t major;
-    uint8_t minor;
+    char hdr_tag_len_ver[4];	/**< command or header+len+ver */
+    char plugin_tag_ver[4];		/**< requested plugin tag */
+    uint8_t major;				/**< plugin version major */
+    uint8_t minor;				/**< plugin version minor */
     uint16_t reserved;
-    uint32_t flags;
-    uint32_t size;
-    uint32_t addr;
-    uint32_t jump;
-    uint8_t  extension[];
+    uint32_t flags;				/**< flags guiding plugin handling */
+    uint32_t size;				/**< size of the data payload */
+    uint32_t addr;				/**< load address to/from server memory */
+    uint32_t jump;				/**< execution address for absolute exes */
+    uint8_t  extension[];		/**< optional extensions */
 } dt_header_t;  /* total 28 bytes for now */
 
+/*  Defines for dt_header_t hdr_tag_len_ver content and handling. */
 #define DT_HDR_LEN_MASK 0xfc
 #define DT_HDR_VER_MASK 0x03
 #define DT_HDR_VERSION  0
@@ -136,33 +145,35 @@ typedef struct dt_header {
 #define DT_CMD_PLUGIN   0   /* tag 'HDR' */
 #define DT_CMD_QUIT     1   /* tag 'QUIT' */
 #define DT_CMD_REBOOT   2   /* tag 'RBOT' */
+#define DT_CMD_ERROR	0x80000000
 
+/* Defaults for the server */
 #define DT_DEF_PORT             9999
 #define DT_DEF_PLUGIN           "LSG0"
 #define DT_DEF_CONNECT_TIMEOUT  5
 
 /* These flags are also passed to the plugin init() */
-#define DT_FLG_EXACT_VERSION    0x00000001  /* Exact version match required.
-                                             * If not set then anything greater
-                                             * or equal works..
+#define DT_FLG_EXACT_VERSION    0x00000001  /**< Exact version match required.
+                                             *   If not set then anything greater
+                                             *   or equal works..
                                              */
 
-#define DT_FLG_REBOOT_ON_EXIT   0x00000002  /* Reboot when exiting done() */
-#define DT_FLG_EXTENSION        0x00000004
-#define DT_FLG_NO_RUN           0x00000008  /* do not run the loaded prg */
+#define DT_FLG_REBOOT_ON_EXIT   0x00000002  /**< Reboot when exiting done() */
+#define DT_FLG_EXTENSION        0x00000004	/**< The header has extensions */
+#define DT_FLG_NO_RUN           0x00000008  /**< Do not run the loaded prg */
 
 /* extentions Types */
-#define DT_EXT_PADDING          0x00
-#define DT_EXT_DEVICE_NAME      0x10
+#define DT_EXT_PADDING          0x00		/**< 1 byte padding */
+#define DT_EXT_DEVICE_NAME      0x10		/**< device name such */
 
 /* other extension related */
-#define DT_EXT_MAX_LEN          15
-
+#define DT_EXT_MAX_LEN          15			/**< Max extension length. Strings do
+											 *   not have NUL termination
+                                             */ 
 /* Error codes */
 #define DT_ERR_OK               0
 #define DT_ERR_NOT_IMPLEMENTED  1
 
-/* numbers from 1 to 999 are reserved for commands etc */
 #define DT_ERR_MALLOC           1001
 #define DT_ERR_OPENLIBRARY      1004
 #define DT_ERR_INIT_FAILED      1005    /* generic failure */

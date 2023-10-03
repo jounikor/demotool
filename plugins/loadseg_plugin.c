@@ -140,7 +140,7 @@ __saveds static LONG local_exec(__reg("a0") void* ctx)
 	if (override_dev) {
 		strcat(a_prefix,":");
 	} else {
-		strcpy(a_prefix,"T:");
+		strcpy(a_prefix,"RAM:");
 	}
 	if (get_tmp_filename(a_prefix,p_ctx->filename,LOADSEG_FILENAME_LEN) == NULL) {
 		Printf("**Error: get_tmp_filename() failed\n");

@@ -1,11 +1,12 @@
-/*
- * 
- * Another one-file wonder 
- * v0.1 (c) 2023 Jouni 'Mr.Spiv' Korhonen
- * 
- * Programmed on A3000/040 and VBCC..
- *
- * =======================================================================
+/**
+ * @file demotool.c
+ * @brief A server side of the Amige remote code execution tool.
+ * @author Jouni 'Mr.Spiv' Korhonen
+ * @version 0.1
+ * @date 2023
+ * @note Programmed on A3000/040 and VBCC..
+ * @licence
+ * @copyright Unlicense
  *
  * This is free and unencumbered software released into the public domain.
  *
@@ -62,14 +63,12 @@
  */
 
 LONG debug = 0;
-
 static LONG rdat_array[RDAT_ARRAY_SIZE] = {0};
 
 /* Disable fancy CTRL-C handling */
 void _chkabort(void)
 {
 }
-
 
 /*
  * Callback function implemenations. These are for
@@ -89,7 +88,6 @@ static LONG send_callback(__reg("a0") APTR p_buf, __reg("d0") LONG len, __reg("a
     return send(CONFIG_PTR_GET->active_socket, p_buf, len, 0);
 }
 
-/* */
 static uint32_t check_dt_ver_len(char* p_hdr, int* p_len, int* p_ver)
 {
     int ver, len;
@@ -151,23 +149,6 @@ static long init_with_open(CONFIG_PTR)
     return sock;
 }
 
-static long accept_main(CONFIG_PTR, long listen_sock)
-{
-    long sock;
-    struct sockaddr_in from;
-    long from_len = sizeof(from);
-
-    sock = accept(listen_sock,(struct sockaddr *)&from,&from_len);
-
-    if (sock >= 0 && debug) {
-        Printf("Connection from: %s:%u\n",
-            Inet_NtoA(from.sin_addr.s_addr),
-            ntohs(from.sin_port));
-    }
-
-    return sock;
-}
-
 static int send_response(CONFIG_PTR, ULONG resp)
 {
     return send(CONFIG_PTR_GET->active_socket, &htonl(resp), 4, 0);
@@ -178,13 +159,68 @@ static int recv_data(CONFIG_PTR, void *data, int len)
     return recv(CONFIG_PTR_GET->active_socket, data, len, 0);
 }
 
+static int close_connection(CONFIG_PTR)
+{
+    CloseSocket(CONFIG_PTR_GET->active_socket);
+    CONFIG_PTR_GET->active_socket = -1;
+    return DT_ERR_OK;
+}
+
+/**
+ * @brief Wait for incoming connections.
+ *
+ * Wait for incoming connections inside a blcking accept().
+ *
+ * @param[in] CONFIG_PTR   A ptr to dt_cfg_t, which holds the current
+ *                         runtime configuration for the server.
+ * @param[in] listen_scok  A listening socket.
+ * @return The "active_socket" for the incoming connection or -1
+ *         in case of an error.
+ */
+static long accept_main(CONFIG_PTR, long listen_sock)
+{
+    long sock;
+    struct sockaddr_in from;
+    long from_len = sizeof(from);
+
+    sock = accept(listen_sock,(struct sockaddr *)&from,&from_len);
+
+    if (sock >= 0) {
+        Printf("Connection from: %s:%lu\n",
+            Inet_NtoA(from.sin_addr.s_addr),
+            ntohs(from.sin_port));
+    }
+
+    return sock;
+}
+
+/**
+ * @brief Main remote file loading and execution logic.
+ *
+ * This function does the main logic for loading and executing
+ * the remote provided file.
+ * The header gets parsed and proper plugin selected based on the
+ * file from the remote client.
+ *
+ * @param[in] CONFIG_PTR   A ptr to dt_cfg_t, which holds the current
+ *                         runtime configuration for the server.
+ * @param[in] list         A ptr to a list of available and loaded
+ *                         plugins.
+ *
+ * @return In case of success and most failures DT_CMD_PLUGIN is
+ *         returned,which tells the caller to start waiting for
+ *         the next incoming file.
+ *         The return value can also be DT_CMD_QUIT or 
+ *         DT_CMD_REBOOT based on the command sent by the remote
+ *         client.
+ */
 static int loader_main(CONFIG_PTR, struct plugin_header* list)
 {
     struct plugin_common* plugin;
     dt_header_t *p_hdr;
-    long ret;
     int hdr_len, hdr_ver;
     char tag_len_ver[4];
+    long ret;
 
     /* First read 4 first bytes for the type.. */
     ret = recv_data(CONFIG_PTR_GET, tag_len_ver, 4);
@@ -308,9 +344,7 @@ static int loader_main(CONFIG_PTR, struct plugin_header* list)
     /* Done executing.. since the main program owns the socket
      * close it before running teh actual code..
      */
-
-    CloseSocket(CONFIG_PTR_GET->active_socket);
-    CONFIG_PTR_GET->active_socket = -1;
+    close_connection(CONFIG_PTR_GET);
 
     /* Skip running the plugin if execute failed.. In this case
      * it was plugin execution responsibility to send an error
@@ -345,7 +379,20 @@ static int loader_main(CONFIG_PTR, struct plugin_header* list)
     return ret;
 }
 
-
+/**
+ * @brief The main server "idle loop" waiting for incoming connections.
+ * 
+ * This function initializes the server and waits for the incoming
+ * connections from the remote clients. The server can be exited if
+ * the remote client sent to "quit" command to the server.
+ *
+ * @param[in] CONFIG_PTR   A ptr to dt_cfg_t, which holds the current
+ *                         runtime configuration for the server.
+ * @param[in] list         A ptr to a list of available and loaded
+ *                         plugins.
+ *
+ * @return DT_CND_QUIT or DT_CMD_ERROR + error code.
+ */
 static int start_server(CONFIG_PTR, struct plugin_header *list)
 {
     long listen_sock;
@@ -356,7 +403,7 @@ static int start_server(CONFIG_PTR, struct plugin_header *list)
     SocketBase = OpenLibrary("bsdsocket.library", BSDSOCKETLIBRARY_VERSION);
 
     if (SocketBase == NULL) {
-        return DT_ERR_CLIENT | DT_ERR_OPENLIBRARY;
+        return DT_CMD_ERROR | DT_ERR_OPENLIBRARY;
     }
     if ((listen_sock = init_with_open(CONFIG_PTR_GET)) >= 0) {
         while ((sock = accept_main(CONFIG_PTR_GET,listen_sock)) >= 0) {
@@ -381,6 +428,8 @@ static int start_server(CONFIG_PTR, struct plugin_header *list)
     /* check for the actual exit code if it was a command */
     switch (ret) {
         case DT_CMD_REBOOT:
+            Printf("Got remote command to reboot.\n");
+            Delay(50);
             ColdReboot();
             break;
         case DT_CMD_QUIT:
@@ -477,7 +526,7 @@ int main(void)
     struct plugin_header *plugins;
     plugins = *pruned_plugin_list ? *pruned_plugin_list : plugin_list;
 
-    if (start_server(&cfg, plugins) < 0) {
+    if (start_server(&cfg, plugins) & DT_CMD_ERROR) {
         Printf("**Error: starting server failed.\n");
     }
     if (pruned_plugin_list) {
