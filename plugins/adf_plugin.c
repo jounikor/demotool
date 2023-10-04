@@ -45,26 +45,26 @@ struct ExecBase *SysBase = NULL;
 ULONG g_errno = DT_ERR_OK;
 
 __saveds static void* local_init(__reg("a0") recv_cb r,
-	__reg("a1") send_cb s,
-	__reg("a2") dt_header_t *h,
-	__reg("a3") void* p);
+    __reg("a1") send_cb s,
+    __reg("a2") dt_header_t *h,
+    __reg("a3") void* p);
 __saveds static LONG local_done(__reg("a0") void* ctx);
 __saveds static LONG local_exec(__reg("a0") void* ctx);
 __saveds static LONG local_run(__reg("a0") void* ctx);
 __saveds static ULONG local_errno(__reg("a0") void* ctx);
 
 const struct plugin_common plugin_info = {
-	ADF_PLUGIN_ID,
-	ADF_PLUGIN_MAJOR,
-	ADF_PLUGIN_MINOR,
-	ADF_RESERVED,
-	"$VER: adf_plugin "MSTR(ADF_PLUGIN_MAJOR)"."MSTR(ADF_PLUGIN_MINOR)" (2.8.2023) by Jouni 'Mr.Spiv' Korhonen",
-	"OTN ADF writer and program launcher",
-	local_init,
-	local_exec,
-	local_run,
-	local_done,
-	local_errno
+    ADF_PLUGIN_ID,
+    ADF_PLUGIN_MAJOR,
+    ADF_PLUGIN_MINOR,
+    ADF_RESERVED,
+    "$VER: adf_plugin "MSTR(ADF_PLUGIN_MAJOR)"."MSTR(ADF_PLUGIN_MINOR)" (2.8.2023) by Jouni 'Mr.Spiv' Korhonen",
+    "OTN ADF writer and program launcher",
+    local_init,
+    local_exec,
+    local_run,
+    local_done,
+    local_errno
 };
 
 static char *s_drives[NUMUNITS] = {"df0", "df1", "df2", "df3"};
@@ -79,7 +79,7 @@ __saveds static void* local_init(__reg("a0") recv_cb r, __reg("a1") send_cb s, _
     int ext_len;
     int n;
 
-	SysBase = *((struct ExecBase **)4);
+    SysBase = *((struct ExecBase **)4);
 
     if ((p_ctx = AllocVec(sizeof(context_t) + TMP_BUF_LEN, 0)) == NULL) {
         g_errno = DT_ERR_MALLOC;
@@ -159,59 +159,59 @@ __saveds static LONG local_done(__reg("a0") void* ctx)
         }
         FreeVec(p_ctx);
     }
-	return DT_ERR_OK;
+    return DT_ERR_OK;
 }
 
 
 __saveds static LONG local_exec(__reg("a0") void* ctx)
 {
     context_t *p_ctx = ctx;
-	ULONG cnt = 0;
+    ULONG cnt = 0;
     LONG len;
-	uint32_t ret = DT_ERR_OK;
+    uint32_t ret = DT_ERR_OK;
 
-	/* read from socket and write to a file */
-	while (cnt < p_ctx->p_hdr->size) {
-		len = p_ctx->recv(p_ctx->io_data, TMP_BUF_LEN, p_ctx->user);
+    /* read from socket and write to a file */
+    while (cnt < p_ctx->p_hdr->size) {
+        len = p_ctx->recv(p_ctx->io_data, TMP_BUF_LEN, p_ctx->user);
 
-		if (len < 0) {
-			ret = DT_ERR_RECV;
-			break;
-		}
-		if (len > 0) {
+        if (len < 0) {
+            ret = DT_ERR_RECV;
+            break;
+        }
+        if (len > 0) {
             p_ctx->p_ioreq->io_Command = CMD_WRITE;
             p_ctx->p_ioreq->io_Length  = (ULONG)len;
             p_ctx->p_ioreq->io_Data    = (APTR)p_ctx->io_data;
             p_ctx->p_ioreq->io_Offset  = cnt;
 
-			if (DoIO((struct IORequest*)p_ctx->p_ioreq) != 0) {
-				ret = DT_ERR_DISK_IO | p_ctx->p_ioreq->io_Error;
-				break;
-			}
-			cnt += len;
-		} else {
-			break;
-		}
-	}
+            if (DoIO((struct IORequest*)p_ctx->p_ioreq) != 0) {
+                ret = DT_ERR_DISK_IO | p_ctx->p_ioreq->io_Error;
+                break;
+            }
+            cnt += len;
+        } else {
+            break;
+        }
+    }
 
     /* tuen motor off and neglect return value.. */
     p_ctx->p_ioreq->io_Command = TD_MOTOR;
     p_ctx->p_ioreq->io_Length  = 0;
     DoIO((struct IORequest*)p_ctx->p_ioreq);
 
-	p_ctx->send(&ret, 4, p_ctx->user);
-	return ret;
+    p_ctx->send(&ret, 4, p_ctx->user);
+    return ret;
 }
 
 __saveds static LONG local_run(__reg("a0") void* ctx)
 {
-	return DT_ERR_OK;
+    return DT_ERR_OK;
 }
 
 
 __saveds static ULONG local_errno(__reg("a0") void* ctx)
 {
-	return g_errno;
+    return g_errno;
 }
 
 

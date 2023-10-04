@@ -51,6 +51,3 @@ struct plugin_common* find_plugin(struct plugin_header* list,
 
 
 #endif /* _PLUGIN_H_INCLUDED */
-
-
-

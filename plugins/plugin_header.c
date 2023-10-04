@@ -34,11 +34,11 @@
 extern struct plugin plugin_info;
 
 static const struct plugin_header external_header = {
-	PLUGIN_MAGIC,		/* magic */
-	PLUGIN_TAGVER,		/* tag_ver */
-	0L,					/* seglist */
-	(struct plugin_common*)(&plugin_info),
-	NULL				/* next */
+    PLUGIN_MAGIC,       /* magic */
+    PLUGIN_TAGVER,      /* tag_ver */
+    0L,                 /* seglist */
+    (struct plugin_common*)(&plugin_info),
+    NULL                /* next */
 };
 
 

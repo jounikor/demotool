@@ -81,16 +81,16 @@ static SOCK_T open_connection(char *name, uint16_t port)
         return DT_ERR_CLIENT | DT_ERR_SOCKET_OPEN;
     }
 #ifndef __AMIGA__
-	if ((opt = fcntl (sock, F_GETFL, NULL)) < 0) {
-		return DT_ERR_CLIENT | DT_ERR_FCNTL;
-	}
-	if (fcntl (sock, F_SETFL, opt | O_NONBLOCK) < 0) {
+    if ((opt = fcntl (sock, F_GETFL, NULL)) < 0) {
+        return DT_ERR_CLIENT | DT_ERR_FCNTL;
+    }
+    if (fcntl (sock, F_SETFL, opt | O_NONBLOCK) < 0) {
 #else
-	opt = 1;
-	if (IoctlSocket(sock, FIONBIO, &opt) != 0) {
+    opt = 1;
+    if (IoctlSocket(sock, FIONBIO, &opt) != 0) {
 #endif
-		return DT_ERR_CLIENT | DT_ERR_FCNTL;
-	}
+        return DT_ERR_CLIENT | DT_ERR_FCNTL;
+    }
 
     memset(&sin,0,sizeof(sin));
     sin.sin_family = AF_INET;
@@ -102,11 +102,11 @@ static SOCK_T open_connection(char *name, uint16_t port)
             tv.tv_sec = DT_DEF_CONNECT_TIMEOUT;
             tv.tv_usec = 0;
             FD_ZERO (&wait_set);
-			FD_SET (sock, &wait_set);
+            FD_SET (sock, &wait_set);
 #ifndef __AMIGA__
             ret = select (sock + 1, NULL, &wait_set, NULL, &tv);
 #else
-			ret = WaitSelect(sock + 1, NULL, &wait_set, NULL, &tv, NULL);
+            ret = WaitSelect(sock + 1, NULL, &wait_set, NULL, &tv, NULL);
 #endif
         } else {
             printf("**Error: connect() failed %d\n",errno);
@@ -136,8 +136,8 @@ static SOCK_T open_connection(char *name, uint16_t port)
 #ifndef __AMIGA__
     if (fcntl(sock, F_SETFL, opt) < 0) {
 #else
-	opt = 0;
-	if (IoctlSocket(sock, FIONBIO, &opt) != 0) {
+    opt = 0;
+    if (IoctlSocket(sock, FIONBIO, &opt) != 0) {
 #endif
         sock = DT_ERR_CLIENT | DT_ERR_FCNTL;
         goto open_connection_exit;
@@ -148,7 +148,7 @@ open_connection_exit:
 #ifndef __AMIGA__
     close(sock);
 #else
-	CloseSocket(sock);
+    CloseSocket(sock);
 #endif
     return sock;
 }
@@ -243,7 +243,7 @@ static dt_header_t* prepare_header(dt_options_t* p_opt, int* final_len)
     strncpy(&p_hdr->plugin_tag_ver[0],p_opt->plugin,4);
     p_hdr->major = p_opt->major & 0xff;
     p_hdr->minor = p_opt->minor & 0xff;
-	p_hdr->reserved = 0;
+    p_hdr->reserved = 0;
     p_hdr->flags = htonl(p_opt->flags);
     p_hdr->addr  = htonl(p_opt->addr);
     p_hdr->jump  = htonl(p_opt->jump);
@@ -310,7 +310,7 @@ static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts)
     uint32_t ret;
     uint32_t size;
     int hdr_len;
-	int len, cnt;
+    int len, cnt;
     FILE *fh;
     dt_header_t* hdr = NULL;
 
@@ -332,24 +332,24 @@ static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts)
 
     /* read file in and send it over.. */
 
-	cnt = 0;
+    cnt = 0;
 
-	while ((len = fread(s_tmp_buf, 1, TMP_BUF_LEN, fh)) > 0) {
-		cnt += len;
-		printf("\rSending %6d/%6d of '%s'",cnt, (int)size, p_opts->file);
-		fflush(stdout);
-	    if (send(s, s_tmp_buf, len, 0) != len) {
+    while ((len = fread(s_tmp_buf, 1, TMP_BUF_LEN, fh)) > 0) {
+        cnt += len;
+        printf("\rSending %6d/%6d of '%s'",cnt, (int)size, p_opts->file);
+        fflush(stdout);
+        if (send(s, s_tmp_buf, len, 0) != len) {
             /* check if we actually got an error from serrver side */
             if (recv(s, &ret, 4, 0) == 4) {
                 ret = ntohl(ret);
             } else {
-    	        ret = DT_ERR_CLIENT | DT_ERR_SEND;
+                ret = DT_ERR_CLIENT | DT_ERR_SEND;
             }
-        	goto lsg0_exit;
-    	}
-	}
+            goto lsg0_exit;
+        }
+    }
 
-	if (feof(fh) == 0) {
+    if (feof(fh) == 0) {
         ret = DT_ERR_CLIENT | DT_ERR_FILE_IO;
         goto lsg0_exit;
     }
@@ -363,7 +363,7 @@ lsg0_exit:
         free(hdr);
     }
 
-	printf("\n");
+    printf("\n");
     fclose(fh);
     return ret;
 }
@@ -390,7 +390,7 @@ static uint32_t peek(SOCK_T s, dt_options_t* p_opts)
     uint32_t ret;
     uint32_t size;
     int hdr_len;
-	int len, cnt;
+    int len, cnt;
     FILE *fh;
     dt_header_t* p_hdr = NULL;
 
@@ -412,20 +412,20 @@ static uint32_t peek(SOCK_T s, dt_options_t* p_opts)
 
     /* read data and write it into the file */
 
-	cnt = 0;
+    cnt = 0;
     size = p_hdr->size;
 
-	while ((len = recv(s, s_tmp_buf, TMP_BUF_LEN, 0)) > 0) {
-		cnt += len;
-		printf("\rReading %6d/%6d to '%s'",cnt, (int)size, p_opts->file);
-		fflush(stdout);
+    while ((len = recv(s, s_tmp_buf, TMP_BUF_LEN, 0)) > 0) {
+        cnt += len;
+        printf("\rReading %6d/%6d to '%s'",cnt, (int)size, p_opts->file);
+        fflush(stdout);
         if (fwrite(s_tmp_buf, 1, len, fh) != len) {
-    	    ret = DT_ERR_CLIENT | DT_ERR_FILE_IO;
+            ret = DT_ERR_CLIENT | DT_ERR_FILE_IO;
             break;
-    	}
-	}
+        }
+    }
 
-	printf("\n");
+    printf("\n");
 
     if (len < 0) {
         printf("**Error: recv() failed with %d\n",errno);
@@ -591,8 +591,8 @@ int main(int argc, char** argv)
 
     /* check for options for plugins */
 #ifdef __AMIGA__
-	optind = 1;
-	optreset = 1;
+    optind = 1;
+    optreset = 1;
 #endif
 
     while ((ch = getopt_long(argc, argv, "v:l:j:red:p:f:hns:", long_options, NULL)) != -1) {
@@ -661,11 +661,11 @@ int main(int argc, char** argv)
     optind++;
 
 #ifdef __AMIGA__
-	/* Link the local program's 'errno' variable to the stack's
-	 * internal 'errno' variable.
-	 */
-	SocketBaseTags(SBTM_SETVAL(SBTC_ERRNOPTR(sizeof(errno))),
-		&errno, TAG_END);
+    /* Link the local program's 'errno' variable to the stack's
+     * internal 'errno' variable.
+     */
+    SocketBaseTags(SBTM_SETVAL(SBTC_ERRNOPTR(sizeof(errno))),
+        &errno, TAG_END);
 #endif
 
     if ((sock = open_connection(argv[optind],port)) & DT_ERR_CLIENT) {
@@ -679,7 +679,7 @@ int main(int argc, char** argv)
 #ifndef __AMIGA__
         close(sock);
 #else
-		CloseSocket(sock);
+        CloseSocket(sock);
 #endif
     }
 

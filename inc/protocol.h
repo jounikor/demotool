@@ -115,6 +115,9 @@
  * acknowledgement as it likely contains the error reason.
  */
 
+#include <stdint.h>
+
+
 /**
  * @struct dt_header protocol.h
  * @typedef struct dt_header dt_header_t
@@ -122,16 +125,16 @@
  * The fixed header part for the client to server handshake.
  */
 typedef struct dt_header {
-    char hdr_tag_len_ver[4];	/**< command or header+len+ver */
-    char plugin_tag_ver[4];		/**< requested plugin tag */
-    uint8_t major;				/**< plugin version major */
-    uint8_t minor;				/**< plugin version minor */
+    char hdr_tag_len_ver[4];    /**< command or header+len+ver */
+    char plugin_tag_ver[4];     /**< requested plugin tag */
+    uint8_t major;              /**< plugin version major */
+    uint8_t minor;              /**< plugin version minor */
     uint16_t reserved;
-    uint32_t flags;				/**< flags guiding plugin handling */
-    uint32_t size;				/**< size of the data payload */
-    uint32_t addr;				/**< load address to/from server memory */
-    uint32_t jump;				/**< execution address for absolute exes */
-    uint8_t  extension[];		/**< optional extensions */
+    uint32_t flags;             /**< flags guiding plugin handling */
+    uint32_t size;              /**< size of the data payload */
+    uint32_t addr;              /**< load address to/from server memory */
+    uint32_t jump;              /**< execution address for absolute exes */
+    uint8_t  extension[];       /**< optional extensions */
 } dt_header_t;  /* total 28 bytes for now */
 
 /*  Defines for dt_header_t hdr_tag_len_ver content and handling. */
@@ -145,7 +148,7 @@ typedef struct dt_header {
 #define DT_CMD_PLUGIN   0   /* tag 'HDR' */
 #define DT_CMD_QUIT     1   /* tag 'QUIT' */
 #define DT_CMD_REBOOT   2   /* tag 'RBOT' */
-#define DT_CMD_ERROR	0x80000000
+#define DT_CMD_ERROR    0x80000000
 
 /* Defaults for the server */
 #define DT_DEF_PORT             9999
@@ -159,16 +162,16 @@ typedef struct dt_header {
                                              */
 
 #define DT_FLG_REBOOT_ON_EXIT   0x00000002  /**< Reboot when exiting done() */
-#define DT_FLG_EXTENSION        0x00000004	/**< The header has extensions */
+#define DT_FLG_EXTENSION        0x00000004  /**< The header has extensions */
 #define DT_FLG_NO_RUN           0x00000008  /**< Do not run the loaded prg */
 
 /* extentions Types */
-#define DT_EXT_PADDING          0x00		/**< 1 byte padding */
-#define DT_EXT_DEVICE_NAME      0x10		/**< device name such */
+#define DT_EXT_PADDING          0x00        /**< 1 byte padding */
+#define DT_EXT_DEVICE_NAME      0x10        /**< device name such */
 
 /* other extension related */
-#define DT_EXT_MAX_LEN          15			/**< Max extension length. Strings do
-											 *   not have NUL termination
+#define DT_EXT_MAX_LEN          15          /**< Max extension length. Strings do
+                                             *   not have NUL termination
                                              */ 
 /* Error codes */
 #define DT_ERR_OK               0
@@ -199,11 +202,11 @@ typedef struct dt_header {
 #define DT_ERR_GETSOCKOPT       2008
 #define DT_ERR_CONNECT_OTHER    2009
 
-#define DT_ERR_CREATE_MSGPORT	4000
-#define DT_ERR_CREATE_IOREQ		4001
-#define DT_ERR_OPENDEVICE		4002
-#define DT_ERR_DISK_DEVICE		4003
-#define DT_ERR_DISK_IO			4096	/* + device error */
+#define DT_ERR_CREATE_MSGPORT   4000
+#define DT_ERR_CREATE_IOREQ     4001
+#define DT_ERR_OPENDEVICE       4002
+#define DT_ERR_DISK_DEVICE      4003
+#define DT_ERR_DISK_IO          4096    /* + device error */
 
 
 #define DT_ERR_CLIENT           0x80000000  /* add this to denote client side */
