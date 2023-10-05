@@ -278,7 +278,7 @@ static int loader_main(CONFIG_PTR, struct plugin_header* list)
         Printf("  Header tag: %s, length %ld, version %ld\n",
             tag1,hdr_len,hdr_ver);
         Printf("  Plugin tag: %s\n",tag2);
-        Printf("  Plugin version: %ld.%ld\n",p_hdr->major,p_hdr->minor);
+        Printf("  Plugin version: %ld.%ld\n", (ULONG)p_hdr->major, (ULONG)p_hdr->minor);
         Printf("  Plugin flags: $%08lx\n",p_hdr->flags);
         Printf("  Data size: %ld bytes\n",p_hdr->size);
         Printf("  Load/save address: $%08lx\n",p_hdr->addr);
@@ -339,7 +339,12 @@ static int loader_main(CONFIG_PTR, struct plugin_header* list)
     if (debug) {
         Printf("Calling plugin exec()\n");
     }
+
     ret = plugin->exec(ctx);
+
+    if (debug) {
+        Printf("exec() returned %ld\n",ret);
+    }
 
     /* Done executing.. since the main program owns the socket
      * close it before running teh actual code..
@@ -359,6 +364,10 @@ static int loader_main(CONFIG_PTR, struct plugin_header* list)
             Delay(50 * CONFIG_PTR_GET->delay);
         }
         ret = plugin->run(ctx);
+
+        if (debug) {
+            Printf("run() returned %ld\n",ret);
+        }
     }
 
     /* about to exit.. we'll skip the return value since it has
@@ -369,7 +378,10 @@ static int loader_main(CONFIG_PTR, struct plugin_header* list)
     }
     ret = plugin->done(ctx);
 
-    if (p_hdr->flags & DT_FLG_REBOOT_ON_EXIT) {
+    if (debug) {
+        Printf("done() returned %ld\n",ret);
+    }
+    if (ret == DT_ERR_OK && p_hdr->flags & DT_FLG_REBOOT_ON_EXIT) {
         ret = DT_CMD_REBOOT;
     } else {
         ret = DT_CMD_PLUGIN;

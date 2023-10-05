@@ -339,7 +339,7 @@ static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts)
         printf("\rSending %6d/%6d of '%s'",cnt, (int)size, p_opts->file);
         fflush(stdout);
         if (send(s, s_tmp_buf, len, 0) != len) {
-            /* check if we actually got an error from serrver side */
+            /* check if we actually got an error from server side */
             if (recv(s, &ret, 4, 0) == 4) {
                 ret = ntohl(ret);
             } else {
@@ -686,7 +686,7 @@ int main(int argc, char** argv)
     if (ret == 0) {
         return 0;
     } else {
-        printf("**Error: command returned 0x%08lx\n",ret);
+        printf("**Error: command returned %lu (0x%08lx)\n",ret, ret);
         exit(1);
     }
 }

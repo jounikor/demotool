@@ -13,6 +13,7 @@ CFLAGS := +aos68k -cpu=68000 -c99 -Inetinclude: -I../inc -I../plugins
 LIBDIR := 
 LIBS :=
 RM := delete
+EXES := exes
 
 DATE := $(shell date)
 DIST := $(subst :,-,$(DATE))
@@ -29,6 +30,11 @@ all:
 dist:
 	@echo $(DIST)
 	lha -r a "$(DIST).lha" #?.c #?.h #?Makefile
+
+dist_exes:
+	@echo $(DIST)
+	lha -r a "$(EXES).lha" #?.exe
+
 
 clean:
 	$(MAKE) -i -C plugins clean

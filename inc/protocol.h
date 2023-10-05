@@ -202,11 +202,14 @@ typedef struct dt_header {
 #define DT_ERR_GETSOCKOPT       2008
 #define DT_ERR_CONNECT_OTHER    2009
 
-#define DT_ERR_CREATE_MSGPORT   4000
-#define DT_ERR_CREATE_IOREQ     4001
-#define DT_ERR_OPENDEVICE       4002
-#define DT_ERR_DISK_DEVICE      4003
-#define DT_ERR_DISK_IO          4096    /* + device error */
+#define DT_ERR_ADF_FILE_SIZE    3000    /* ADF file size is wrong */
+
+#define DT_ERR_CREATE_MSGPORT   0x00010000
+#define DT_ERR_CREATE_IOREQ     0x00020000
+#define DT_ERR_OPENDEVICE       0x00030000
+#define DT_ERR_DISK_DEVICE      0x00040000
+#define DT_ERR_DISK_IO          0x00050000  /* + device error */
+#define DT_ERR_DISK_SECTOR_LEN  0x00060000
 
 
 #define DT_ERR_CLIENT           0x80000000  /* add this to denote client side */
