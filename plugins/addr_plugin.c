@@ -144,7 +144,7 @@ __saveds static LONG local_exec(__reg("a0") void* ctx)
         }
         cnt += len;
     }
-local_exec_exit:
+
     p_ctx->send(&ret, 4, p_ctx->user);
     return ret;
 }

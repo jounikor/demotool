@@ -42,6 +42,7 @@ typedef struct dt_options {
     uint32_t size;
     char* device;
     char* plugin;
+    char* named_plugin;
     char* file;
     uint32_t major;
     uint32_t minor;

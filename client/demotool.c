@@ -240,7 +240,12 @@ static dt_header_t* prepare_header(dt_options_t* p_opt, int* final_len)
     p_hdr->hdr_tag_len_ver[3] = ver_len;
     
     /* Requested plugin information */
-    strncpy(&p_hdr->plugin_tag_ver[0],p_opt->plugin,4);
+    if (p_opt->named_plugin) {
+        strncpy(&p_hdr->plugin_tag_ver[0],p_opt->named_plugin,4);
+    } else {
+        strncpy(&p_hdr->plugin_tag_ver[0],p_opt->plugin,4);
+    }
+
     p_hdr->major = p_opt->major & 0xff;
     p_hdr->minor = p_opt->minor & 0xff;
     p_hdr->reserved = 0;
@@ -316,6 +321,7 @@ static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts)
 
     size = get_file_read_size(p_opts->file, &fh, false);
     p_opts->size = size;
+    cnt = 0;
 
     if (size & DT_ERR_CLIENT) {
         fclose(fh);
@@ -325,15 +331,12 @@ static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts)
         fclose(fh);
         return DT_ERR_MALLOC;
     }
-    if ((ret = handshake(s, hdr, hdr_len)) & DT_ERR_CLIENT) {
-        printf("**Error: handshake failed %lu\n",ret);
+    if ((ret = handshake(s, hdr, hdr_len)) != DT_ERR_OK) {
+        printf("**Error: handshake failed.\n");
         goto lsg0_exit;
     }
 
     /* read file in and send it over.. */
-
-    cnt = 0;
-
     while ((len = fread(s_tmp_buf, 1, TMP_BUF_LEN, fh)) > 0) {
         cnt += len;
         printf("\rSending %6d/%6d of '%s'",cnt, (int)size, p_opts->file);
@@ -362,8 +365,10 @@ lsg0_exit:
     if (hdr) {
         free(hdr);
     }
+    if (cnt > 0) {
+        printf("\n");
+    }
 
-    printf("\n");
     fclose(fh);
     return ret;
 }
@@ -498,6 +503,12 @@ static plugin_t validate_command(const dt_options_t *p_opts)
         }
         return peek;
     }
+    if (!strcmp("send",name)) {
+        return lsg0;
+    }
+    if (!strcmp("recv",name)) {
+        return peek;
+    }
 
     /* commands without file transfer */
     if (!strcmp("quit",name)) {
@@ -523,6 +534,7 @@ static const struct option long_options[] = {
     {"port",    required_argument,  0, 'P' },
     {"help",    no_argument,        0, 'h' },
     {"no-run",  no_argument,        0, 'n' },
+    {"plugin",  required_argument,  0, 'P' },
     {0,0,0,0}
 };
 
@@ -535,12 +547,15 @@ static void usage(char** argv)
             "Commands are:\n"
             "  quit               Quit remote server.\n"
             "  reboot             Reboot remote Amiga.\n"
+            "  send               Generic file send to a named plugin.\n"
+            "  recv               Generic file read from a named plugin.\n"
             "  lsg0               Execute 'file' using loadseg plugin.\n"
             "  lsg1               Execute 'file' using Internaloadsegplugin.\n"
             "  adr0               Execute 'file' using absolute adderess plugin.\n"
             "  adf0               Create a disk from 'file' using adf plugin.\n"
             "  peek               Dump memory to 'file' using peek plugin.\n\n"
             "Where [options] are:\n"
+            "  --plugin,-P name   Use with 'send' and 'recv' to name a plugin.\n"
             "  --version,-v x.y   Minimum or exact plugin version, e.g. '1.2'.\n"
             "  --file,-f file     File to send to a remote Amiga or to save to\n"
             "                     from a remote Amiga.\n"
@@ -588,6 +603,7 @@ int main(int argc, char** argv)
     s_opts.major = 0;
     s_opts.minor = 0;
     s_opts.file = NULL;
+    s_opts.named_plugin = NULL;
 
     /* check for options for plugins */
 #ifdef __AMIGA__
@@ -595,7 +611,7 @@ int main(int argc, char** argv)
     optreset = 1;
 #endif
 
-    while ((ch = getopt_long(argc, argv, "v:l:j:red:p:f:hns:", long_options, NULL)) != -1) {
+    while ((ch = getopt_long(argc, argv, "v:l:j:red:p:f:hns:P:", long_options, NULL)) != -1) {
         switch (ch) {
         case 'v':   // --version,-v
 #ifndef __AMIGA__
@@ -605,6 +621,13 @@ int main(int argc, char** argv)
 #endif
                 usage(argv);
             }
+            break;
+        case 'P':   // --plugin,-P
+            if (strlen(optarg) != 4) {
+                printf("**Error: plugin name can only be 4 charaters.\n");
+                usage(argv);
+            }
+            s_opts.named_plugin = optarg;
             break;
         case 'n':   // --no-run,-n
             s_opts.flags |= DT_FLG_NO_RUN;
