@@ -32,6 +32,10 @@ Currently implemented:
   the plugin logic must follow the 'lsg0' or 'peek' plugins documented
   in the 'inc/protocol.h' header file.
 
+  Why the whole plugin hassle anyway? Erm.. no particular reason other 
+  than I wanted to try out writing fancy plugin system. The way it is
+  done is used in other forms and projects already.
+
 Work in Progress:
 * Generic cleanup of the code. It is rather messy in places.
 * InternalLoadSeg() executable launcher (just for the sake of it ;)
