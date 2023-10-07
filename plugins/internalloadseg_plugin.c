@@ -38,8 +38,7 @@
 
 #include "internalloadseg_plugin.h"
 
-struct ExecBase *SysBase   = NULL;
-struct DosLibrary *DOSBase = NULL;
+struct ExecBase *SysBase = NULL;
 ULONG g_errno = DT_ERR_OK;
 
 __saveds static void* local_init(__reg("a0") recv_cb r,
@@ -58,7 +57,7 @@ const struct internalloadseg_plugin plugin_info = {
 	INTERNALLOADSEG_PLUGIN_MINOR,
 	INTERNALLOADSEG_RESERVED,
 	"$VER: loadseg_plugin "MSTR(INTERNALLOADSEG_PLUGIN_MAJOR)"."MSTR(INTERNALLOADSEG_PLUGIN_MINOR)" (2.8.2023) by Jouni 'Mr.Spiv' Korhonen",
-	"Over the network InternalLoadseg() program launcher",
+	"OTN InternalLoadseg() program launcher",
 
 	local_init,
 	local_exec,
@@ -71,39 +70,27 @@ const struct internalloadseg_plugin plugin_info = {
 __saveds static void* local_init(__reg("a0") recv_cb r, __reg("a1") send_cb s, __reg("a2") dt_header_t *h, __reg("a3") void* p)
 {
 	SysBase = *((struct ExecBase **)4);
-
-	if (DOSBase = (struct DosLibrary*)OpenLibrary("dos.library",36)) {
-		Printf("local_init()\n");
-	}
-
-	return DOSBase;
+    g_errno = DT_ERR_NOT_IMPLEMENTED;
+	return NULL;
 }
 
 __saveds static LONG local_done(__reg("a0") void* ctx)
 {
-	if (DOSBase) {
-		Printf("local_done()\n");
-		CloseLibrary((struct Library*)DOSBase);
-	}
-
-	return DT_ERR_OK;
+    g_errno = DT_ERR_NOT_IMPLEMENTED;
+	return DT_ERR_NOT_IMPLEMENTED;
 }
 
 
 __saveds static LONG local_exec(__reg("a0") void* ctx)
 {
-	if (DOSBase) {
-		Printf("local_exec()\n");
-	}
-	return DT_ERR_OK;
+    g_errno = DT_ERR_NOT_IMPLEMENTED;
+	return DT_ERR_NOT_IMPLEMENTED;
 }
 
 __saveds static LONG local_run(__reg("a0") void* ctx)
 {
-	if (DOSBase) {
-		Printf("local_run()\n");
-	}
-	return DT_ERR_OK;
+    g_errno = DT_ERR_NOT_IMPLEMENTED;
+	return DT_ERR_NOT_IMPLEMENTED;
 }
 
 __saveds static ULONG local_errno(__reg("a0") void* ctx)

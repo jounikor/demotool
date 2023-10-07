@@ -59,7 +59,7 @@ const struct plugin_common plugin_info = {
     ADF_PLUGIN_MAJOR,
     ADF_PLUGIN_MINOR,
     ADF_RESERVED,
-    "$VER: adf_plugin "MSTR(ADF_PLUGIN_MAJOR)"."MSTR(ADF_PLUGIN_MINOR)" (2.8.2023) by Jouni 'Mr.Spiv' Korhonen",
+    "$VER: adf_plugin "MSTR(ADF_PLUGIN_MAJOR)"."MSTR(ADF_PLUGIN_MINOR)" (7.10.2023) by Jouni 'Mr.Spiv' Korhonen",
     "OTN ADF writer and program launcher",
     local_init,
     local_exec,
@@ -82,8 +82,9 @@ __saveds static void* local_init(__reg("a0") recv_cb r, __reg("a1") send_cb s, _
 
     SysBase = *((struct ExecBase **)4);
 
-    /* Only standard ADF size supported.. */
-    if (h->size != (TRACK_LEN*160)) {
+    /* Only standard ADF size or 1 track for bootblocks supported.. */
+    if (!(h->size == (TRACK_LEN*160) || 
+          h->size == TRACK_LEN)) {
         g_errno = DT_ERR_ADF_FILE_SIZE;
         return NULL;
     }
@@ -196,7 +197,7 @@ __saveds static LONG local_exec(__reg("a0") void* ctx)
 
             len = p_ctx->recv(p_ctx->io_data+pos, len, p_ctx->user);
 
-            if (len < 0) {
+            if (len <= 0) {
                 break;
             } else {
                 pos += len;
@@ -224,6 +225,9 @@ __saveds static LONG local_exec(__reg("a0") void* ctx)
             ret = DT_ERR_DISK_SECTOR_LEN;
             break;
         }
+        if (len == 0) {
+            break;
+        }
     }
 
     /* turn motor off and neglect return value.. */
@@ -245,5 +249,3 @@ __saveds static ULONG local_errno(__reg("a0") void* ctx)
 {
     return g_errno;
 }
-
-

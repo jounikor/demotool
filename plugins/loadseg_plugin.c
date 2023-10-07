@@ -210,4 +210,3 @@ __saveds static ULONG local_errno(__reg("a0") void* ctx)
 {
     return g_errno;
 }
-

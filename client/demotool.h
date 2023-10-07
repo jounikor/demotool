@@ -46,6 +46,7 @@ typedef struct dt_options {
     char* file;
     uint32_t major;
     uint32_t minor;
+    SOCK_T sock;
 } dt_options_t;
 
 typedef uint32_t (*plugin_t)(SOCK_T,dt_options_t*);

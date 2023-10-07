@@ -7,6 +7,13 @@ Currently implemented:
 * Client for sending / reading files 
   - Compiles on Amiga (kick 2.x required)
   - Compiles on Mac etc Berkeley sockets compliant OSes.
+  - Default plugin commands: lsg0, lsg1, adr0, adf0
+  - Default remote commands: reboot, quit
+  - Generic plugin commands: recv, send
+    - Recv works like a 'peek' plugin.
+    - Send works like a 'lsg0' plugin.
+    - When using generic plugins you need to pass the plugin
+      name to be used with '--plugin' option.
 
 * server
   - Compiles on Amiga (kick 2.x required)
@@ -15,13 +22,18 @@ Currently implemented:
   - Loadseg() executable launcher. 
   - Absolute address launcher. This plugin can be used to load
     arbitrary data into server Amiga RAM.
-  - ADF writer
+  - ADF writer. This allow 160 track ADF or 1 track ADF (for writing bootblock).
   - Peek to read arbitrary data from Server Amiga RAM to a
     client side file.
 
+* About plugin implementations:
+  If you do not want to change the client code then design your plugins
+  to work with generic plugin commands 'recv' and 'send'. In this case
+  the plugin logic must follow the 'lsg0' or 'peek' plugins documented
+  in the 'inc/protocol.h' header file.
+
 Work in Progress:
 * Generic cleanup of the code. It is rather messy in places.
-* Add function documentation.
 * InternalLoadSeg() executable launcher (just for the sake of it ;)
 
 

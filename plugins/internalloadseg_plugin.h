@@ -31,9 +31,6 @@
 #ifndef _INTERNALLOADSEG_PLUGIN_H_INCLUDED
 #define _INTERNALLOADSEG_PLUGIN_H_INCLUDED
 
-#include <dos/dos.h>
-#include <stdint.h>
-
 #include "plugin_header.h"
 
 
