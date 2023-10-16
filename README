@@ -38,7 +38,6 @@ Currently implemented:
 
 Work in Progress:
 * Generic cleanup of the code. It is rather messy in places.
-* InternalLoadSeg() executable launcher (just for the sake of it ;)
 
 
 
