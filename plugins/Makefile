@@ -13,11 +13,6 @@ LOADSEG_SRC := loadseg_plugin.c utils.c
 LOADSEG_OBJ := loadseg_plugin.o utils.o
 LOADSEG_INC := loadseg_plugin.h utils.h
 
-INTERNALLOADSEG_EXE := internalloadseg_plugin.exe
-INTERNALLOADSEG_SRC := internalloadseg_plugin.c
-INTERNALLOADSEG_OBJ := internalloadseg_plugin.o
-INTERNALLOADSEG_INC := internalloadseg_plugin.h
-
 ADF_EXE     := adf_plugin.exe
 ADF_SRC     := adf_plugin.c utils.c
 ADF_OBJ     := adf_plugin.o utils.o
@@ -36,8 +31,7 @@ PEEK_INC    := peek_plugin.h
 PLUGIN_HEADER := plugin_header.o
 
 # Make all targets..
-all: 	$(INTERNALLOADSEG_EXE) \
-	$(LOADSEG_EXE) \
+all: $(LOADSEG_EXE) \
 	$(ADF_EXE) \
 	$(ADDR_EXE)  \
 	$(PEEK_EXE) \
@@ -50,9 +44,6 @@ all: 	$(INTERNALLOADSEG_EXE) \
 
 $(LOADSEG_EXE): $(PLUGIN_HEADER) $(LOADSEG_OBJ)
 	vc $(PLUGIN_LDOPTS) $(PLUGIN_HEADER) $(LOADSEG_OBJ) -o $(LOADSEG_EXE)
-
-$(INTERNALLOADSEG_EXE): $(PLUGIN_HEADER) $(INTERNALLOADSEG_OBJ)
-	vc $(PLUGIN_LDOPTS) $(PLUGIN_HEADER) $(INTERNALLOADSEG_OBJ) -o $(INTERNALLOADSEG_EXE)
 
 $(ADF_EXE): $(PLUGIN_HEADER) $(ADF_OBJ)
 	vc $(PLUGIN_LDOPTS) $(PLUGIN_HEADER) $(ADF_OBJ) -o $(ADF_EXE)
