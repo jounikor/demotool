@@ -1,6 +1,7 @@
+;APS00000000000000000000000000000000000000000000000000000000000000000000000000000000
 ;
 ; Demo startup (c) Jouni 'Mr.Spiv' Korhonen
-; Version 6
+; Version 7
 ;
 ; Also good for kick1.x with m680x0, where x>0
 ;
@@ -73,7 +74,8 @@ smNOAGA		equ	YES
 smCacheFlags	equ	0
 smCacheMask	equ	$ffffffff
 
-        ; For serial TRACE macro
+
+
 smSerPer9600PAL		equ	368
 smSerPer115200PAL	equ	29
 smSerPer230400PAL	equ	14
@@ -94,7 +96,7 @@ demostartup:	movem.l	d1-a6,-(sp)
 ;-----------------------------------------------------------------------------
 ;- WBstartup code.. Include only to filal exe (jams when runned from compiler)
 ;-----------------------------------------------------------------------------
-		IF	smWBStartup		* So called WBstartup..
+		IF	smWBStartup		; So called WBstartup..
 		sub.l	a1,a1
 		jsr	__LVOFindTask(a6)	; -294
 		move.l	d0,a3
@@ -357,10 +359,10 @@ demostartup:	movem.l	d1-a6,-(sp)
 		jsr	__LVODisownBlitter(a6)	; -462
 
 		move.l	(sp)+,a1		; smview
-		jsr	__LVOLoadView(a6)	; -222
 		move.l	(sp)+,$084-2(a3)	; smloflist
 		move.l	(sp)+,$080-2(a3)	; smcopinit
-		move	d0,$088-2(a3)
+		jsr	__LVOLoadView(a6)	; -222
+		;move	d0,$088-2(a3)
 
 		move.l	a6,a1
 		move.l	$04.w,a6
@@ -542,7 +544,7 @@ HW_printf_pio:
 
 	move.l	$4.w,a6
 	lea	$dff018,a3
-	jsr	__LVORawDoFMT(a6)
+	jsr	__LVORawDoFmt(a6)
 
 	movem.l	(sp)+,d0-d1/a0-a3/a6
 	rts
