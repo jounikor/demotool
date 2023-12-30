@@ -33,8 +33,11 @@
 #include <stdbool.h>
 #include <exec/libraries.h>
 #include <exec/types.h>
+
+#define __NOLIBBASE__
 #include <proto/dos.h>
 #include <proto/exec.h>
+
 #include "loadseg_plugin.h"
 #include "utils.h"
 

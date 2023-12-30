@@ -80,12 +80,46 @@ void _chkabort(void)
 
 static LONG recv_callback(__reg("a0") APTR p_buf, __reg("d0") LONG len, __reg("a1") void* CONFIG)
 {
-    return recv(CONFIG_PTR_GET->active_socket, p_buf, len, 0);
+    LONG tot = 0;
+    LONG res;
+    uint8_t *buf = p_buf;
+
+    while (tot < len) {
+        res = recv(CONFIG_GET_PTR->active_socket,buf+tot,len-tot,0);
+    
+        if (res < 0) {
+            if (errno != EAGAIN) {
+                tot = res;
+                break;
+            } 
+        } else {
+            tot += res;
+        }
+    }
+    
+    return tot;
 }
 
 static LONG send_callback(__reg("a0") APTR p_buf, __reg("d0") LONG len, __reg("a1") void* CONFIG)
 {
-    return send(CONFIG_PTR_GET->active_socket, p_buf, len, 0);
+    LONG tot = 0;
+    LONG res;
+    uint8_t *buf = p_buf;
+
+    do {
+        res = send(CONFIG_GET_PTR->active_socket,buf+tot,len-tot,0);
+
+        if (res < 0) {
+            if (errno != EAGAIN) {
+                tot = res;
+                break;
+            }
+        } else {
+            tot += res;
+        }
+    } while (tot < len);
+
+    return tot;
 }
 
 static uint32_t check_dt_ver_len(char* p_hdr, int* p_len, int* p_ver)

@@ -34,8 +34,12 @@ Currently implemented:
 
   Why the whole plugin hassle anyway? Erm.. no particular reason other 
   than I wanted to try out writing fancy plugin system. The way it is
-  done is used in other forms and projects already. A big credit goes
-  to SDI's (Dirk Stoecker) existing work on plugins.
+  done is used in other forms and projects already.
+
+* Acknowledgements:
+  - A big credit goes to SDI's (Dirk Stoecker) existing work on plugins.
+  - Olaf Barthel for pointing out some stupid "misconcepts" with blocking
+    sockets.
 
 Work in Progress:
 * Generic cleanup of the code. It is rather messy in places.

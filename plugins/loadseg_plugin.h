@@ -49,7 +49,6 @@ typedef struct context {
 	send_cb send;
 	dt_header_t *p_hdr;
 	void *user;
-	LONG count;
 	BPTR program;
 	char filename[LOADSEG_FILENAME_LEN];
 } context_t;

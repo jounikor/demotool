@@ -62,6 +62,51 @@ void _chkabort(void)
 }
 #endif
 
+static long recv_safe(SOCK_T s, void *b, long len, long flags)
+{
+    long tot = 0;
+    long res;
+    uint8_t *buf = b;
+
+    while (tot < len) {
+        res = recv(s,buf+tot,len-tot,flags);
+    
+        if (res < 0) {
+            if (errno != EAGAIN) {
+                tot = res;
+                break;
+            } 
+        } else {
+            tot += res;
+        }
+    }
+    
+    return tot;
+}
+
+static long send_safe(SOCK_T s, void *b, long len, long flags)
+{
+    long tot = 0;
+    long res;
+    uint8_t *buf = b;
+
+    do {
+        res = send(s,buf+tot,len-tot,flags);
+
+        if (res < 0) {
+            if (errno != EAGAIN) {
+                tot = res;
+                break;
+            }
+        } else {
+            tot += res;
+        }
+    } while (tot < len);
+
+    return tot;
+}
+
+
 static SOCK_T open_connection(char *name, uint16_t port)
 {
     struct sockaddr_in sin;
@@ -82,14 +127,16 @@ static SOCK_T open_connection(char *name, uint16_t port)
     }
 #ifndef __AMIGA__
     if ((opt = fcntl (sock, F_GETFL, NULL)) < 0) {
-        return DT_ERR_CLIENT | DT_ERR_FCNTL;
+        ret = DT_ERR_CLIENT | DT_ERR_FCNTL;
+        goto open_connection_exit;
     }
     if (fcntl (sock, F_SETFL, opt | O_NONBLOCK) < 0) {
 #else
     opt = 1;
     if (IoctlSocket(sock, FIONBIO, &opt) != 0) {
 #endif
-        return DT_ERR_CLIENT | DT_ERR_FCNTL;
+        ret = DT_ERR_CLIENT | DT_ERR_FCNTL;
+        goto open_connection_exit;
     }
 
     memset(&sin,0,sizeof(sin));
@@ -110,27 +157,27 @@ static SOCK_T open_connection(char *name, uint16_t port)
 #endif
         } else {
             printf("**Error: connect() failed %d\n",errno);
-            sock = DT_ERR_CLIENT | DT_ERR_CONNECT;
+            ret = DT_ERR_CLIENT | DT_ERR_CONNECT;
             goto open_connection_exit;
         }
     } else {
         ret = 1;
     }
     if (ret == 0) {
-        sock = DT_ERR_CLIENT | DT_ERR_CONNECT_TIMEOUT;
+        ret = DT_ERR_CLIENT | DT_ERR_CONNECT_TIMEOUT;
         goto open_connection_exit;
     }
     if (ret < 0) {
-        sock = DT_ERR_CLIENT | DT_ERR_SELECT;
+        ret = DT_ERR_CLIENT | DT_ERR_SELECT;
         goto open_connection_exit;
     }
     if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &val, &val_len) < 0) {
-        sock = DT_ERR_CLIENT | DT_ERR_GETSOCKOPT;
+        ret = DT_ERR_CLIENT | DT_ERR_GETSOCKOPT;
         goto open_connection_exit;
     }
     if (val != 0) {
         printf("**Error: connect() failed#2 %d\n",val);
-        sock = DT_ERR_CLIENT | DT_ERR_CONNECT_OTHER;
+        ret = DT_ERR_CLIENT | DT_ERR_CONNECT_OTHER;
         goto open_connection_exit;
     }
 #ifndef __AMIGA__
@@ -139,7 +186,7 @@ static SOCK_T open_connection(char *name, uint16_t port)
     opt = 0;
     if (IoctlSocket(sock, FIONBIO, &opt) != 0) {
 #endif
-        sock = DT_ERR_CLIENT | DT_ERR_FCNTL;
+        ret = DT_ERR_CLIENT | DT_ERR_FCNTL;
         goto open_connection_exit;
     }
     return sock;
@@ -150,7 +197,7 @@ open_connection_exit:
 #else
     CloseSocket(sock);
 #endif
-    return sock;
+    return ret;
 }
 
 static uint32_t handshake(SOCK_T s, dt_header_t* hdr, int hdr_len)
@@ -160,7 +207,7 @@ static uint32_t handshake(SOCK_T s, dt_header_t* hdr, int hdr_len)
     uint32_t ret;
 
     /* send header and check whether this is a plugin or a command */
-    n = send(s,hdr,hdr_len,0);
+    n = send_safe(s,hdr,hdr_len,0);
 
     if (n != (hdr_len)) {
         printf("**Error: failed to send dt_header\n");
@@ -168,7 +215,7 @@ static uint32_t handshake(SOCK_T s, dt_header_t* hdr, int hdr_len)
     }
 
     /* read response */
-    n = recv(s,resp,4,0);
+    n = recv_safe(s,resp,4,0);
 
     if (n != 4) {
         printf("**Error: failed to recv response.\n");
@@ -341,9 +388,9 @@ static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts)
         cnt += len;
         printf("\rSending %6d/%6d of '%s'",cnt, (int)size, p_opts->file);
         fflush(stdout);
-        if (send(s, s_tmp_buf, len, 0) != len) {
+        if (send_safe(s, s_tmp_buf, len, 0) != len) {
             /* check if we actually got an error from server side */
-            if (recv(s, &ret, 4, 0) == 4) {
+            if (recv_safe(s, &ret, 4, 0) == 4) {
                 ret = ntohl(ret);
             } else {
                 ret = DT_ERR_CLIENT | DT_ERR_SEND;
@@ -356,7 +403,7 @@ static uint32_t lsg0(SOCK_T s, dt_options_t* p_opts)
         ret = DT_ERR_CLIENT | DT_ERR_FILE_IO;
         goto lsg0_exit;
     }
-    if (recv(s, &ret, 4, 0) != 4) {
+    if (recv_safe(s, &ret, 4, 0) != 4) {
         ret = DT_ERR_CLIENT | DT_ERR_RECV;
     } else {
         ret = ntohl(ret);
@@ -420,7 +467,7 @@ static uint32_t peek(SOCK_T s, dt_options_t* p_opts)
     cnt = 0;
     size = p_hdr->size;
 
-    while ((len = recv(s, s_tmp_buf, TMP_BUF_LEN, 0)) > 0) {
+    while ((len = recv_safe(s, s_tmp_buf, TMP_BUF_LEN, 0)) > 0) {
         cnt += len;
         printf("\rReading %6d/%6d to '%s'",cnt, (int)size, p_opts->file);
         fflush(stdout);
@@ -452,10 +499,10 @@ static uint32_t quit_remote(SOCK_T s, dt_options_t* p_opts)
     uint32_t reply;
     int n;
 
-    if (send(s,command,4,0) != 4) {
+    if (send_safe(s,command,4,0) != 4) {
         return DT_ERR_CLIENT | DT_ERR_SEND;
     }
-    if (recv(s,&reply,4,0) != 4) {
+    if (recv_safe(s,&reply,4,0) != 4) {
         return DT_ERR_CLIENT | DT_ERR_RECV;
     }
 
@@ -469,10 +516,10 @@ static uint32_t reboot_remote(SOCK_T s, dt_options_t* p_opts)
     uint32_t reply;
     int n;
 
-    if (send(s,command,4,0) != 4) {
+    if (send_safe(s,command,4,0) != 4) {
         return DT_ERR_CLIENT | DT_ERR_SEND;
     }
-    if (recv(s,&reply,4,0) != 4) {
+    if (recv_safe(s,&reply,4,0) != 4) {
         return DT_ERR_CLIENT | DT_ERR_RECV;
     }
 
