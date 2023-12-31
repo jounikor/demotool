@@ -3,6 +3,21 @@
 A demotool for remote execution of Amiga exes and ADFs
 over the network from a PC/Mac/Amiga..
 
+Developed entirely in my trusty A3000/040 setup using the
+other trusty A600/020 as the test host. The project has been made to
+compile under Amiga development environment. However, it is 
+possible to compile the client side for other operating systems
+as well (I test with very old macOS Catalina (dosdude's patch)).
+
+The builds for Amiga are tested with vbcc and Roadshow networking
+stack. As usual the makefiles are somewhat crappy. In order to
+compile entire project for Amiga run the Makefile in the root
+directory.
+
+In order to compile the client for other operating systems run:
+'make -C client all' in the root directory.
+
+
 Currently implemented:
 * Client for sending / reading files 
   - Compiles on Amiga (kick 2.x required)
@@ -40,6 +55,9 @@ Currently implemented:
   - A big credit goes to SDI's (Dirk Stoecker) existing work on plugins.
   - Olaf Barthel for pointing out some stupid "misconcepts" with blocking
     sockets.
+  - Bifat for inspiring (without his knowledge :) me to complete this
+    so long time stalled project.
+  - Frank Wille for helping a bit with vbcc and vlink foo.
 
 Work in Progress:
 * Generic cleanup of the code. It is rather messy in places.

@@ -60,5 +60,5 @@ dist:
 	lha -x a $(DIST).lha #?.c #?.h #?Makefile
 
 clean:
-	delete \#?.o \#?.i $(PROG)
+	$(RM) \#?.o \#?.i $(PROG)
 

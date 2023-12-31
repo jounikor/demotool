@@ -26,6 +26,8 @@ all:
 	$(MAKE) -i -C server all
 	$(MAKE) -i -C client all OS=$(OS)
 
+client: 
+	$(MAKE) -i -C client all OS=$(OS)
 
 dist:
 	@echo $(DIST)
