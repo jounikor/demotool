@@ -31,7 +31,7 @@ PEEK_INC    := peek_plugin.h
 PLUGIN_HEADER := plugin_header.o
 
 # Make all targets..
-all: $(LOADSEG_EXE) \
+all: 	$(LOADSEG_EXE) \
 	$(ADF_EXE) \
 	$(ADDR_EXE)  \
 	$(PEEK_EXE) \

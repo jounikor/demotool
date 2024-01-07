@@ -7,6 +7,7 @@
 
 #OS := __AMIGA__
 MAKE := make
+LHA  := $(shell which lha)
 
 ifeq ($(OS),__AMIGA__)
 	CC := vc
@@ -15,6 +16,7 @@ ifeq ($(OS),__AMIGA__)
 	LIBDIR := 
 	LIBS :=
 	RM := delete
+	WILD := '\#?'
 else
 	CC := cc
 	LDFLAGS :=
@@ -22,6 +24,7 @@ else
 	LIBDIR := 
 	LIBS :=
 	RM := rm
+	WILD := *
 endif
 
 
@@ -57,8 +60,8 @@ $(PROG): $(OBJS)
 
 dist:
 	@echo $(DIST)
-	lha -x a $(DIST).lha #?.c #?.h #?Makefile
+	$(LHA) -x a $(DIST).lha $(WILD).c $(WILD).h $(WILD)Makefile
 
 clean:
-	$(RM) \#?.o \#?.i $(PROG)
+	$(RM) $(WILD).o $(WILD).i $(PROG)
 

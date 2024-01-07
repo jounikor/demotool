@@ -2,7 +2,7 @@
 #
 #
 
-.PHOBY: all clean dist
+.PHOBY: all clean dist pl cl se gs
 .SUFFIXES: .o .c
 
 OS := __AMIGA__
@@ -17,6 +17,15 @@ EXES := exes
 
 DATE := $(shell date)
 DIST := $(subst :,-,$(DATE))
+LHA  := $(shell which lha)
+
+ifeq ($(OS),__AMIGA__)
+	RM := delete
+	WILD := '\#?'
+else
+	RM := rm
+	WILD := *
+endif
 
 #
 #
@@ -25,22 +34,34 @@ all:
 	$(MAKE) -i -C plugins all
 	$(MAKE) -i -C server all
 	$(MAKE) -i -C client all OS=$(OS)
+	$(MAKE) -i -C searcher all OS=$(OS)
 
-client: 
+pl:
+	$(MAKE) -i -C plugins all
+
+se:
+	$(MAKE) -i -C server all
+
+cl:
 	$(MAKE) -i -C client all OS=$(OS)
+
+gs:
+	$(MAKE) -i -C searcher all OS=$(OS)
+
 
 dist:
 	@echo $(DIST)
-	lha -r a "$(DIST).lha" #?.c #?.h #?Makefile
+	$(LHA) -r a "$(DIST).lha" $(WILD).c $(WILD).h $(WILD)Makefile
 
 dist_exes:
 	@echo $(DIST)
-	lha -r a "$(EXES).lha" #?.exe
+	$(LHA) -r a "$(EXES).lha" $(WILD).exe
 
 
 clean:
 	$(MAKE) -i -C plugins clean
 	$(MAKE) -i -C server clean
-	$(MAKE) -i -C client clean
+	$(MAKE) -i -C client clean OS=$(OS)
+	$(MAKE) -i -C searcher clean OS=$(OS)
 
 

@@ -85,7 +85,7 @@ static LONG recv_callback(__reg("a0") APTR p_buf, __reg("d0") LONG len, __reg("a
     uint8_t *buf = p_buf;
 
     while (tot < len) {
-        res = recv(CONFIG_GET_PTR->active_socket,buf+tot,len-tot,0);
+        res = recv(CONFIG_PTR_GET->active_socket,buf+tot,len-tot,0);
     
         if (res < 0) {
             if (errno != EAGAIN) {
@@ -107,7 +107,7 @@ static LONG send_callback(__reg("a0") APTR p_buf, __reg("d0") LONG len, __reg("a
     uint8_t *buf = p_buf;
 
     do {
-        res = send(CONFIG_GET_PTR->active_socket,buf+tot,len-tot,0);
+        res = send(CONFIG_PTR_GET->active_socket,buf+tot,len-tot,0);
 
         if (res < 0) {
             if (errno != EAGAIN) {
