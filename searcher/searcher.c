@@ -436,7 +436,7 @@ static struct UCopList* setup_copper(struct Screen* p_scr, cop_cfg_t* p_cfg)
 
     dffstop = dffstrt + step*word_cnt;
 
-    CINIT(p_ucl,2048);
+    CINIT(p_ucl,128);
 
     /* A discovery.. system copperlist entries are place before the
      * first user defined CWAIT()
@@ -900,27 +900,24 @@ static ULONG handle_bplane_move(cop_cfg_t *p_cfg, int key, int qual)
 
     switch (key) {
     case KEY_LEFT:
-        step_even  = 16;
-        step_odd   = 16;
+        step_even  = 2;
+        step_odd   = 2;
         break;
     case KEY_RIGHT:
-        step_even  = -16;
-        step_odd   = -16;
+        step_even  = -2;
+        step_odd   = -2;
         break;
     case KEY_DOWN:
-        step_even = -(p_cfg->scr_width + p_cfg->mod_even);
-        step_odd  = -(p_cfg->scr_width + p_cfg->mod_odd);
+        step_even = -((p_cfg->scr_width >> 3) + p_cfg->mod_even);
+        step_odd  = -((p_cfg->scr_width >> 3) + p_cfg->mod_odd);
         break;
     case KEY_UP:
-        step_even = p_cfg->scr_width + p_cfg->mod_even;
-        step_odd  = p_cfg->scr_width + p_cfg->mod_odd;
+        step_even = (p_cfg->scr_width >> 3) + p_cfg->mod_even;
+        step_odd  = (p_cfg->scr_width >> 3) + p_cfg->mod_odd;
         break;
     default:
         return 0;
     }
-
-    step_even >>= 3;
-    step_odd  >>= 3;
 
     if (!(p_cfg->flags & MODE_DUALPF)) {
         step_even = step_odd;
