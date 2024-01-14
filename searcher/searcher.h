@@ -33,11 +33,12 @@
 
 #include <exec/types.h>
 
-#define MODE_HIRES  0x00000001
+/* Aligh display modes with the relevant indices */
+#define MODE_STD    0x00000001
 #define MODE_HAM    0x00000002
-#define MODE_HBRITE 0x00000004
-#define MODE_DUALPF 0x00000008
-#define MODE_PF2PRI 0x00000010
+#define MODE_DUALPF 0x00000004
+#define MODE_PF2PRI 0x00000008
+#define MODE_HIRES  0x00000010
 
 typedef struct {
     UWORD pal[32+3];
@@ -80,7 +81,7 @@ typedef struct {
 #define TEXT_DISPLAY    0x00000400
 #define TEXT_PRIORITY   0x00000800
 #define TEXT_SAVEAS     0x00001000
-#define TEXT_RGBIDX     0x00002000
+#define TEXT_RGB        0x00002000
 
 #define TEXT_AREA3_X    470
 #define TEXT_AREA3_Y    3+7
@@ -103,10 +104,9 @@ typedef struct {
 #define IDX_PRIO_MAX    1
 
 #define IDX_DISP_STD    0
-#define IDX_DISP_HBR    1
-#define IDX_DISP_HAM    2
-#define IDX_DISP_DPF    3
-#define IDX_DISP_MAX    3
+#define IDX_DISP_HAM    1
+#define IDX_DISP_DPF    2
+#define IDX_DISP_MAX    2
 
 #define IDX_SAVE_RAW    0
 #define IDX_SAVE_IFF    1
@@ -141,11 +141,16 @@ typedef struct {
 #define KEY_EQUAL   0x0c
 #define KEY_BSLASH  0x0d
 #define KEY_BSPACE  0x41
+#define KEY_P       0x19
+#define KEY_C       0x33
+#define KEY_D       0x22
 #define KEY_H       0x25
 #define KEY_L       0x28
-#define KEY_SLASH   0x3a
+#define KEY_N       0x36
+#define KEY_M       0x37
+#define KEY_COMMA   0x38
 #define KEY_FSTOP   0x39
-#define KEY_COMMA   0x38    
+#define KEY_SLASH   0x3a
 
 #define KEY_LSHFT   0x60
 #define KEY_RSHFT   0x61
@@ -170,7 +175,19 @@ typedef struct {
 
 
 /* numpad */
-#define KEY_NP_FS   0x3c
+#define KEY_NP_FS       0x3c
+#define KEY_NP_ENTER    0x43
+#define KEY_NP_0        0x0f
+#define KEY_NP_9        0x3f
+#define KEY_NP_8        0x3e
+#define KEY_NP_7        0x3d
+#define KEY_NP_6        0x2f
+#define KEY_NP_5        0x2e
+#define KEY_NP_4        0x2d
+#define KEY_NP_3        0x1f
+#define KEY_NP_2        0x1e
+#define KEY_NP_1        0x1d
+#define KEY_NP_MINUS    0x4a
 
 
 /* state machine for key reading */
@@ -184,15 +201,15 @@ typedef struct {
 #if 0
 206                 358            470
 0         1         2         3    |    4         5
-012345678901234567890123456789012345678901234567890
+012345678901234567890123456789012345678901234567890123
 
-SCREEN WIDTH  0000                 BPLANES 4 HIRES
-PFIELD1 WIDTH 0000  RGB INDEX  00  0 ON  * $100000
-PFIELD2 WIDTH 0000  MOD EVEN 0000  1 ON  - $100000
-BPLANE HEIGHT 0000  MOD ODD  0000  2 ON  * $100000
-                    DISPLAY   DPF  3 ON  * $100000
-status comments     PRIORITY  PF1  4 OFF - $100000
-ADDRESS    $000000  SAVE AS   IFF  5 OFF - $100000
+SCREEN WIDTH  0000                 BIT PLANES  4 HIRES
+PFIELD1 WIDTH 0000  RGB  #00 $000  0 ON  * $100000 PF1
+PFIELD2 WIDTH 0000  MOD EVEN 0000  1 ON  - $100000 PF2
+BPLANE HEIGHT 0000  MOD ODD  0000  2 ON  * $100000 PF1
+                    DISPLAY   DPF  3 ON  * $100000 PF2
+status comments     PRIORITY  PF1  4 OFF - $100000 PF1
+ADDRESS    $000000  SAVE AS   IFF  5 OFF - $100000 PF2
 
 
 SAVE AS:

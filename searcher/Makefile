@@ -56,7 +56,7 @@ run:
 
 dist:
 	@echo $(DIST)
-	$(LHA) -x a $(DIST).lha $(WILD).c $(WILD).h $(WILD)Makefile
+	$(LHA) -x a $(DIST).lha $(WILD).c $(WILD).h $(WILD)Makefile $(WILD).doc
 
 clean:
 	$(RM) $(WILD).o $(WILD).i $(PROG)

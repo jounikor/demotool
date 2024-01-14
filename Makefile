@@ -51,7 +51,7 @@ gs:
 
 dist:
 	@echo $(DIST)
-	$(LHA) -r a "$(DIST).lha" $(WILD).c $(WILD).h $(WILD)Makefile
+	$(LHA) -r a "$(DIST).lha" $(WILD).c $(WILD).h $(WILD)Makefile  $(WILD).doc
 
 dist_exes:
 	@echo $(DIST)

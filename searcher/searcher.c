@@ -36,22 +36,24 @@
 #undef GetOutlinePen
 #endif
 
-#include <clib/alib_stdio_protos.h>
+#include <proto/exec.h>
+#define __NOLIBBASE__
+#include <proto/graphics.h>
+#include <proto/intuition.h>
+#include <proto/dos.h>
 
+#include <exec/execbase.h>
+#include <intuition/intuition.h>
+#include <intuition/screens.h>
+#include <dos/stdio.h>
+#include <dos/dos.h>
 #include <graphics/copper.h>
 #include <graphics/text.h>
 #include <graphics/sprite.h>
 #include <hardware/custom.h>
 
-#include <proto/exec.h>
-#include <proto/graphics.h>
-#include <proto/intuition.h>
-#include <intuition/intuition.h>
-#include <intuition/screens.h>
-
-#include <proto/dos.h>
-#include <dos/stdio.h>
-#include <dos/dos.h>
+#include <clib/alib_stdio_protos.h>
+#include <clib/macros.h>
 
 #include "searcher.h"
 
@@ -93,15 +95,15 @@ static STRPTR s_text_area1[] = {"SCREEN WIDTH  0000",
 
 /* text area 2 */
 static STRPTR s_text_area2[] = {"             ",
-                                "RGB INDEX    ",
+                                "RGB  #   $   ",
                                 "MOD EVEN     ",
                                 "MOD ODD      ",
                                 "DISPLAY      ",
                                 "PRIORITY     ",
                                 "SAVE AS      "};
 
-/* text area 3                   0 2   6 8 A*/
-static STRPTR s_text_area3[] = {"BPLANES            ",
+/* text area 3                   0 2   6 8   C E    */
+static STRPTR s_text_area3[] = {"BIT PLANES         ",
                                 "0       $       PF1",
                                 "1       $       PF2",
                                 "2       $       PF1",
@@ -114,7 +116,7 @@ static STRPTR s_text_ooff[] = {"ON ","OFF"};
 static STRPTR s_text_lock[] = {"-","*"};
 
 static STRPTR s_text_prio[] = {" PF1"," PF2"};
-static STRPTR s_text_disp[] = {" STD"," HBR"," HAM","DUAL"};
+static STRPTR s_text_disp[] = {" STD"," HAM","DUAL"};
 static STRPTR s_text_save[] = {" RAW"," IFF","IFF+"," PAL"};
 
 #define TEXT_VER_LEN 4
@@ -371,7 +373,7 @@ static struct UCopList* setup_copper(struct Screen* p_scr, cop_cfg_t* p_cfg)
     struct UCopList* p_ucl = AllocMem(sizeof(*p_ucl), MEMF_PUBLIC|MEMF_CLEAR);
     struct ViewPort* p_vp;
     UWORD *p_pal = &p_cfg->pal[0];
-    WORD shft;
+    WORD shft, height;
     int y;
     WORD dffstrt, dffstop, step, word_cnt;
     WORD bplcon0;
@@ -394,7 +396,7 @@ static struct UCopList* setup_copper(struct Screen* p_scr, cop_cfg_t* p_cfg)
         bplcon0 |= 0x8000;
     }
     if (p_cfg->flags & MODE_DUALPF) {
-        bplcon0 |= 0x4000;
+        bplcon0 |= 0x0400;
     }
     if (p_cfg->flags & MODE_PF2PRI) {
         bplcon2 |= 0x0040;
@@ -407,7 +409,6 @@ static struct UCopList* setup_copper(struct Screen* p_scr, cop_cfg_t* p_cfg)
     
     /* DFF08e and DFF090 values.. both lower and hires */
     word_cnt = p_cfg->scr_width >> 4;
-    //dffstrt = p_cfg->dffstrt;
     
     if (p_cfg->flags & MODE_HIRES) {
         if (word_cnt > 40) {
@@ -493,10 +494,16 @@ static struct UCopList* setup_copper(struct Screen* p_scr, cop_cfg_t* p_cfg)
      * opened screen size. This works if we keep using 1.x compatible
      * screens..
      */
-    CWAIT(p_ucl,264,6);
+    height = p_cfg->scr_height + 63;
+
+    if (height > 263) {
+        height = 263;
+    }
+
+    CWAIT(p_ucl,height,6);
     CMove(p_ucl,(void*)0xdff180,0x0fff); CBump(p_ucl);
     CMove(p_ucl,(void*)0xdff100,0x0200); CBump(p_ucl);
-    CWAIT(p_ucl,265,6);
+    CWAIT(p_ucl,height+1,6);
     CMove(p_ucl,(void*)0xdff180,0x0203); CBump(p_ucl);
 
     CEND(p_ucl);
@@ -531,7 +538,7 @@ static struct UCopList* setup_copper(struct Screen* p_scr, cop_cfg_t* p_cfg)
 
 static void update_head_texts(BOOL statics, ULONG texts, cop_cfg_t *p_cfg) 
 {
-    int n,x,y;
+    int n,x,y,width;
     char buf[10];
 
     if (statics) {
@@ -592,13 +599,23 @@ static void update_head_texts(BOOL statics, ULONG texts, cop_cfg_t *p_cfg)
         Move(sp_window->RPort,TEXT_AREA1_X+14*8,TEXT_AREA1_Y+0*8);
         Text(sp_window->RPort,buf,4);
     }
-    if (texts & TEXT_PF1WIDTH) {
-        sprintf(buf,"%04d",p_cfg->scr_width+p_cfg->mod_odd);
+    if (texts & TEXT_PF1WIDTH || texts & TEXT_MODODD) {
+        width = p_cfg->scr_width+p_cfg->mod_odd;
+        if (width < p_cfg->scr_width) {
+            width = p_cfg->scr_width;
+        }
+
+        sprintf(buf,"%04d",width);
         Move(sp_window->RPort,TEXT_AREA1_X+14*8,TEXT_AREA1_Y+1*8);
         Text(sp_window->RPort,buf,4);
     }
-    if (texts & TEXT_PF2WIDTH) {
-        sprintf(buf,"%04d",p_cfg->scr_width+p_cfg->mod_even);
+    if (texts & TEXT_PF2WIDTH || texts & TEXT_MODEVEN) {
+        width = p_cfg->scr_width+p_cfg->mod_even;
+        if (width < p_cfg->scr_width) {
+            width = p_cfg->scr_width;
+        }
+
+        sprintf(buf,"%04d",width);
         Move(sp_window->RPort,TEXT_AREA1_X+14*8,TEXT_AREA1_Y+2*8);
         Text(sp_window->RPort,buf,4);
     }
@@ -609,18 +626,21 @@ static void update_head_texts(BOOL statics, ULONG texts, cop_cfg_t *p_cfg)
     }
 
     /* Area 2 */
-    if (texts & TEXT_RGBIDX) {
+    if (texts & TEXT_RGB) {
         sprintf(buf,"%02d",p_cfg->rgb_idx);
-        Move(sp_window->RPort,TEXT_AREA2_X+11*8,TEXT_AREA2_Y+1*8);
+        Move(sp_window->RPort,TEXT_AREA2_X+6*8,TEXT_AREA2_Y+1*8);
         Text(sp_window->RPort,buf,2);
+        sprintf(buf,"%03x",p_cfg->pal[p_cfg->rgb_idx]);
+        Move(sp_window->RPort,TEXT_AREA2_X+10*8,TEXT_AREA2_Y+1*8);
+        Text(sp_window->RPort,buf,3);
     }
     if (texts & TEXT_MODEVEN) {
-        sprintf(buf,"%04d",p_cfg->mod_even);
+        sprintf(buf,"%+4d",p_cfg->mod_even);
         Move(sp_window->RPort,TEXT_AREA2_X+9*8,TEXT_AREA2_Y+2*8);
         Text(sp_window->RPort,buf,4);
     }
     if (texts & TEXT_MODODD) {
-        sprintf(buf,"%04d",p_cfg->mod_odd);
+        sprintf(buf,"%+4d",p_cfg->mod_odd);
         Move(sp_window->RPort,TEXT_AREA2_X+9*8,TEXT_AREA2_Y+3*8);
         Text(sp_window->RPort,buf,4);
     }
@@ -640,7 +660,7 @@ static void update_head_texts(BOOL statics, ULONG texts, cop_cfg_t *p_cfg)
     /* Area 3 */
     if (texts & TEXT_BPLANES) {
         /* num planes */
-        Move(sp_window->RPort,TEXT_AREA3_X+8*8,TEXT_AREA3_Y+0*8);
+        Move(sp_window->RPort,TEXT_AREA3_X+12*8,TEXT_AREA3_Y+0*8);
         sprintf(buf,"%d",p_cfg->num_bpl);
         Text(sp_window->RPort,buf,1);
 
@@ -656,7 +676,7 @@ static void update_head_texts(BOOL statics, ULONG texts, cop_cfg_t *p_cfg)
     if (texts & TEXT_RESO) {
         /* lores or hires */
         n = p_cfg->flags & MODE_HIRES ? 1 : 0;
-        Move(sp_window->RPort,TEXT_AREA3_X+10*8,TEXT_AREA3_Y+0*8);
+        Move(sp_window->RPort,TEXT_AREA3_X+14*8,TEXT_AREA3_Y+0*8);
         Text(sp_window->RPort,s_text_reso[n],5);
     }
     if (texts & TEXT_BPLLOCKS) {
@@ -711,7 +731,7 @@ static void update_pal_texts(BOOL on)
 
 
 
-static void init_cop_cfg(cop_cfg_t *p_cfg, BOOL pal_only)
+static ULONG init_cop_cfg(cop_cfg_t *p_cfg, BOOL pal_only)
 {
     int n;
 
@@ -720,7 +740,7 @@ static void init_cop_cfg(cop_cfg_t *p_cfg, BOOL pal_only)
     }
 
     if (pal_only) {
-        return;
+        return RGB_CHANGE;
     }
 
     for (n = 0; n < 6; n++) {
@@ -740,11 +760,14 @@ static void init_cop_cfg(cop_cfg_t *p_cfg, BOOL pal_only)
     p_cfg->pf1shft = 0;
     p_cfg->pf2shft = 0;
     p_cfg->num_bpl = 5;
-    p_cfg->flags = 0;
+    p_cfg->flags = MODE_STD;
     p_cfg->bpl_lock = 0x3f; /* all six planes */
 
     p_cfg->key_state = STM_MAIN;
     p_cfg->rgb_idx = 0;
+    
+    /* update everything */
+    return ~0;
 }
 
 static ULONG inc_scr_width(cop_cfg_t *p_cfg)
@@ -782,13 +805,14 @@ static ULONG dec_scr_width(cop_cfg_t *p_cfg)
     return TEXT_SCREEN|TEXT_PF1WIDTH|TEXT_PF2WIDTH;
 }
 
-static ULONG reset_bplane_addrs(cop_cfg_t *p_cfg)
+static ULONG reset_bplane_addrs(cop_cfg_t *p_cfg, LONG ptr)
 {
-    p_cfg->bpl_ptr[1] = p_cfg->bpl_ptr[0];
-    p_cfg->bpl_ptr[2] = p_cfg->bpl_ptr[0];
-    p_cfg->bpl_ptr[3] = p_cfg->bpl_ptr[0];
-    p_cfg->bpl_ptr[4] = p_cfg->bpl_ptr[0];
-    p_cfg->bpl_ptr[5] = p_cfg->bpl_ptr[0];
+    p_cfg->bpl_ptr[0] = ptr;
+    p_cfg->bpl_ptr[1] = ptr;
+    p_cfg->bpl_ptr[2] = ptr;
+    p_cfg->bpl_ptr[3] = ptr;
+    p_cfg->bpl_ptr[4] = ptr;
+    p_cfg->bpl_ptr[5] = ptr;
     return TEXT_BPLADDRS;
 }
 
@@ -812,12 +836,40 @@ static ULONG handle_display_mode(cop_cfg_t *p_cfg)
     if (++p_cfg->display > IDX_DISP_MAX) {
         p_cfg->display = 0;
     }
+
+    p_cfg->flags = p_cfg->flags & ~(MODE_HAM|MODE_STD|MODE_DUALPF);
+    p_cfg->flags = p_cfg->flags | (1 << p_cfg->display);
+
     return TEXT_DISPLAY;
+}
+
+static ULONG handle_save_as(cop_cfg_t *p_cfg)
+{
+    if (++p_cfg->save_as > IDX_SAVE_MAX) {
+        p_cfg->save_as = 0;
+    }
+    return TEXT_SAVEAS;
 }
 
 
 static ULONG set_bplane_height(cop_cfg_t *p_cfg, WORD height)
 {
+    p_cfg->scr_height = height;
+    return TEXT_HEIGHT;
+}
+
+static ULONG handle_bplane_height(cop_cfg_t *p_cfg, int qual)
+{
+    WORD height = p_cfg->scr_height;
+    WORD step=1;
+
+    if (qual & IEQUALIFIER_LSHIFT) {
+        step = -1;
+    }
+    if (height + step > 0 && height + step < 9999) {
+        height += step;
+    }
+
     p_cfg->scr_height = height;
     return TEXT_HEIGHT;
 }
@@ -921,6 +973,193 @@ static ULONG set_resolution(cop_cfg_t *p_cfg, BOOL hires)
 }
 
 
+static ULONG handle_palette(cop_cfg_t *p_cfg, int key)
+{
+    UWORD *p_rgb = &p_cfg->pal[p_cfg->rgb_idx];
+    UWORD inc=0,dec=0,msk=0;
+    UWORD rgb = *p_rgb;
+
+    switch (key) {
+    case KEY_NP_0:
+        if (rgb == 0xfff || rgb == 0) {
+            *p_rgb = rgb ^ 0x0fff;
+        } else {
+            *p_rgb = 0;
+        } 
+        return TEXT_RGB;
+
+    case KEY_NP_7:
+        inc = 0x100;
+        msk = 0xf00;
+        break;
+    case KEY_NP_4:
+        dec = 0x100;
+    case KEY_NP_1:
+        msk = 0xf00;
+        break;
+
+    case KEY_NP_8:
+        inc = 0x010;
+        msk = 0x0f0;
+        break;
+    case KEY_NP_5:
+        dec = 0x010;
+    case KEY_NP_2:
+        msk = 0x0f0;
+        break;
+
+    case KEY_NP_9:
+        inc = 0x001;
+        msk = 0x00f;
+        break;
+    case KEY_NP_6:
+        dec = 0x001;
+    case KEY_NP_3:
+        msk = 0x00f;
+        break;
+
+    default:
+        return 0;
+    }
+
+    if (inc > 0) {
+        if ((rgb & msk) < msk) {
+            rgb = ((rgb & msk) + inc) | (rgb & ~msk);
+        }
+    }
+    if (dec > 0) {
+        if ((rgb & msk) > 0) {
+            rgb = ((rgb & msk) - dec) | (rgb & ~msk);
+        }
+    }
+    if (inc == 0 && dec == 0) {
+        if ((rgb & msk) == msk || (rgb & msk) == 0) {
+            rgb = rgb ^ msk;
+        } else {
+            rgb = rgb & ~msk;
+        } 
+    }
+
+    *p_rgb = rgb;
+    return TEXT_RGB;
+}
+
+static ULONG dec_palette_index(cop_cfg_t *p_cfg)
+{
+    p_cfg->rgb_idx = (p_cfg->rgb_idx-1) & 0x1f;
+    return TEXT_RGB;
+}
+
+static ULONG inc_palette_index(cop_cfg_t *p_cfg)
+{
+    p_cfg->rgb_idx = (p_cfg->rgb_idx+1) & 0x1f;
+    return TEXT_RGB;
+}
+
+static ULONG set_chipmem_addr(cop_cfg_t *p_cfg, int key)
+{
+    LONG ptr = 0;
+    int n;
+
+    switch (key) {
+    case KEY_F8:
+        ptr = 0;
+        break;
+    case KEY_F9:
+        ptr = 0x50000;
+        break;
+    default:
+        return 0;
+    }
+
+    switch (SysBase->MaxLocMem >> 20) {
+    case 0: /* 512K CHIP */
+        break;        
+    case 1: /* 1M CHIP */
+        ptr += 0x80000;
+        break;
+    case 2: /* 2M CHIP */
+        ptr += 0x100000;
+        break;
+    default:
+        return 0;
+    }
+
+    for (n = 0; n < 6; n++) {
+        p_cfg->bpl_ptr[n] = ptr;
+    }
+
+    return TEXT_BPLADDRS;
+}
+
+static ULONG handle_modulos(cop_cfg_t *p_cfg, int key, int qual)
+{
+    WORD step_odd=0, step_even=0;
+    int n;
+
+    switch (key) {
+    case KEY_FSTOP:
+        step_even  = 2;
+        step_odd   = 2;
+        break;
+    case KEY_COMMA:
+        step_even  = -2;
+        step_odd   = -2;
+        break;
+    case KEY_M:
+        step_even  = 10;
+        step_odd   = 10;
+        break;
+    case KEY_N:
+        step_even  = -10;
+        step_odd   = -10;
+        break;
+    case KEY_SLASH:
+        if (qual & IEQUALIFIER_RSHIFT) {
+            p_cfg->mod_even = 0;
+            return TEXT_MODEVEN;
+        } else if (qual & IEQUALIFIER_LSHIFT) {
+            p_cfg->mod_odd  = 0;
+            return TEXT_MODODD;
+        } else {
+            p_cfg->mod_even = 0;
+            p_cfg->mod_odd  = 0;
+            return TEXT_MODEVEN|TEXT_MODODD;
+        }
+        break;
+    default:
+        return 0;
+    }
+
+    if (qual & IEQUALIFIER_RSHIFT) {
+        if (ABS(p_cfg->mod_even + step_even) < 1000 ) {
+            p_cfg->mod_even = p_cfg->mod_even + step_even;
+        }
+        return TEXT_MODEVEN;
+    } else if (qual & IEQUALIFIER_LSHIFT) {
+        if (ABS(p_cfg->mod_odd + step_odd) < 1000) {
+            p_cfg->mod_odd = p_cfg->mod_odd + step_odd;
+        }
+        return TEXT_MODODD;
+    }
+    if (ABS(p_cfg->mod_odd + step_odd) < 1000) {
+        p_cfg->mod_odd  = p_cfg->mod_odd + step_odd;
+    }
+    if (ABS(p_cfg->mod_even + step_even) < 1000) {
+        p_cfg->mod_even = p_cfg->mod_even + step_even;
+    }
+    return TEXT_MODODD|TEXT_MODEVEN;
+}
+
+static ULONG handle_priority(cop_cfg_t *p_cfg)
+{
+    if (++p_cfg->priority > IDX_PRIO_MAX) {
+        p_cfg->priority = 0;
+    }
+
+    return TEXT_PRIORITY;
+}
+
 
 
 static BOOL main_key_loop(int key, int qual, cop_cfg_t *p_cfg)
@@ -936,12 +1175,26 @@ static BOOL main_key_loop(int key, int qual, cop_cfg_t *p_cfg)
         update_pal_texts(onoff);
         onoff = !onoff;
         break;
+    case KEY_NP_0: case KEY_NP_1: case KEY_NP_2: case KEY_NP_3: case KEY_NP_4:
+    case KEY_NP_5: case KEY_NP_6: case KEY_NP_7: case KEY_NP_8: case KEY_NP_9:
+        update = handle_palette(p_cfg,key);
+        break;
+    case KEY_NP_MINUS:
+        update = dec_palette_index(p_cfg);
+        break;
+    case KEY_NP_ENTER:
+        update = inc_palette_index(p_cfg);
+        break;
+
     case KEY_1: case KEY_2: case KEY_3: case KEY_4: 
     case KEY_5: case KEY_6: case KEY_7: 
         update = set_bplane_lock(p_cfg,key-KEY_1);
         break;
     case KEY_8:
-        update = reset_bplane_addrs(p_cfg);
+        update = reset_bplane_addrs(p_cfg,p_cfg->bpl_ptr[0]);
+        break;
+    case KEY_0:
+        update = reset_bplane_addrs(p_cfg,0);
         break;
     case KEY_F1:
         update = handle_display_mode(p_cfg);
@@ -977,13 +1230,16 @@ static BOOL main_key_loop(int key, int qual, cop_cfg_t *p_cfg)
         update = set_resolution(p_cfg,FALSE);
         break;
 
-    case KEY_SLASH:
-        break;
-    case KEY_FSTOP:
-        break;
-    case KEY_COMMA:
+    case KEY_P:
+        update = handle_priority(p_cfg);
         break;
 
+    case KEY_D:
+        update = init_cop_cfg(p_cfg,TRUE);
+        break;
+
+    case KEY_C:
+        break;
 
     case KEY_UP:
     case KEY_DOWN:
@@ -993,7 +1249,18 @@ static BOOL main_key_loop(int key, int qual, cop_cfg_t *p_cfg)
         break;
 
     case KEY_F6:
-        p_cfg->key_state = STM_HEIGHT;
+        update = handle_bplane_height(p_cfg,qual);
+        break;
+    case KEY_F7:
+        update = handle_save_as(p_cfg);
+        break;
+    case KEY_F8: case KEY_F9:
+        update = set_chipmem_addr(p_cfg,key);
+        break;
+
+    case KEY_N: case KEY_M: case KEY_COMMA:
+    case KEY_FSTOP: case KEY_SLASH:
+        update = handle_modulos(p_cfg,key,qual);
         break;
 
     case KEY_ESC:

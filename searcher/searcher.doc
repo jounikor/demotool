@@ -1,0 +1,109 @@
+THIS IS WORK IN PROGRESS.. AND INACCURATE IN PLACES
+
+
+OVERVIEW ON THE KEYS:
+ннннннннннннннннннннн
+
+        F1:        DISPLAY MODE: HAM/HBR(HALFBRITE)/DUAL(PLAYFIELD)
+        F2:        BPLANE HEIGHT 100
+        F3:        BPLANE HEIGHT 200
+        F4:        BPLANE HEIGHT 256
+        F5:        BPLANE HEIGHT 512
+
+        F6:        INCREASE SCREEN HEIGHT BY 1
+        LSHIFT+F6  DECREASE SCREEN HEIGHT BY 1
+
+        F7:     SAVE PICTURES MODE: IFF/RAW/+RAW(WITH PALETTE)/PAL(ETTE)
+        F8:     POINTER TO $000000
+                ($080000 IF 1MB CHIP)
+                ($100000 IF 2MB CHIP)
+        F9:     POINTER TO $050000
+                ($0D0000 IF 1MB CHIP)
+                ($150000 IF 2MB CHIP)
+        F10:    QUIT PROGRAM
+
+        D:      RESET TO DEFAULT PALETTE
+
+        Z:      SET MODES (SEARCH MODES)
+
+                1:        MODE 1 ON/OFF
+                2:        MODE 2 ON/OFF
+                3:        MODE 3 ON/OFF
+                RETURN:        STOP (QUIT SET MODES)
+
+        TAB:    THE SAVE REQUESTER
+
+        L:        LORES
+        H:        HIRES
+        P:        PF1 AND PF2 PRIORITY
+
+        [:        DECREASE DDFSTOP
+        ]:        INCREASE DDFSTOP
+
+        X:        SEARCH COPPERLIST (WITH BITPLANES NUMBER)
+        C:        SEARCH COLORTABLE (WITH BITPLANES NUMBER)
+
+        V:        MOVE IN COLORTABLE
+        B:        MOVE IN COLORTABLE
+
+        N:          DECREASE PF1 & PF2 MODULOS (10)
+        M:          INCREASE PF1 & PF2 MODULOS (10)
+        ,:          DECREASE PF1 & PF2 MODULOS (2)
+        .:          INCREASE PF1 & PF2 MODULOS (2)
+        /:          PF1 & PF2 MODULOS TO 0
+
+        LSHIFT+M:   INCREASE PF1 MODULO (10)
+        RSHIFT+N:   DECREASE PF2 MODULO (10)
+        LSHIFT+,:   DECREASE PF1 MODULO (2)
+        RSHIFT+.:   INCREASE PF2 MODULO (2)
+        LSHIFT+/:   PF1 MODULO TO 0
+        RSHIFT+/:   PF2 MODULO TO 0
+
+        UP:         MEMPOS + MODULO (LINE)
+        DOWN:       MEMPOS - MODULO (LINE)
+        LEFT:       MEMPOS - 2
+        RIGHT:      MEMPOS + 2
+        LSHIFT+UP   MEMPOS + ((SCREEN HEIGHT) / 4) * MODULO (LINE)
+        LSHIFT+DOWN MEMPOS - ((SCREEN HEIGHT) / 4) * MODULO (LINE)
+        RSHIFT+UP   MEMPOS + ((SCREEN HEIGHT) / 8) * MODULO (LINE)
+        RSHIFT+DOWN MEMPOS - ((SCREEN HEIGHT) / 8) * MODULO (LINE)
+        HOLD CURSOR KEYS DOWN MOVES EVEYTHING 4 TIMES FASTER.
+
+        
+        1:        BITPLANE 1 ON/OFF
+        2:        BITPLANE 2 ON/OFF
+        3:        BITPLANE 3 ON/OFF
+        4:        BITPLANE 4 ON/OFF
+        5:        BITPLANE 5 ON/OFF
+        6:        BITPLANE 6 ON/OFF
+        7:        ALL BITPLANES ON/OFF
+        8:        RESET BITPLANES
+                    (ALL BITPLANES TO BPL1'S ADDRESS)
+        0:        RESET BITPLANES
+                    (ALL BITPLANES TO 0x000000 ADDRESS)
+
+        -:        DECREASE BITPLANES NUMBER
+        =:        INCREASE BITPLANES NUMBER
+
+THE PALETTE EDITING: (NUMERIC PAD)
+
+        7:      INCREASE RED
+        8:      INCREASE GREEN
+        9:      INCREASE BLUE
+
+        4:      DECREASE RED
+        5:      DECREASE GREEN
+        6:      DECREASE BLUE
+
+        1:      RED TO   $0 (or toggle to 15 if already 0)
+        2:      GREEN TO $0 (or toggle to 15 if already 0)
+        3:      BLUE TO  $0 (or toggle to 15 if already 0)
+
+        0:      COLOR TO $000 (R+G+B)
+
+        .:        COLORS NUMBERS HELP ON/OFF
+
+        -:        DECREASE COLORS POINTER
+        ENTER:        INCREASE COLORS POINTER
+
+* --------------------------------------------------------------------------- *
