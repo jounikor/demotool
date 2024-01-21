@@ -41,6 +41,12 @@ Currently implemented:
   - Peek to read arbitrary data from Server Amiga RAM to a
     client side file.
 
+* Graphics Searcher
+  - This is a tribute (and a reimplementation) of the classic "Graphic
+    Searcher" originally by Terminators. A bit more system friendly
+    (multitasks) and especially uses IDCMP for keyboard input.
+  - Only for OCS/ECS and uses native screen modes.
+
 * About plugin implementations:
   If you do not want to change the client code then design your plugins
   to work with generic plugin commands 'recv' and 'send'. In this case

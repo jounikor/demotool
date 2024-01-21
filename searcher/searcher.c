@@ -60,7 +60,7 @@
 #include "searcher.h"
 #include "ilbm.h"
 
-static const char s_ver[] = "$VER: Graphics Searcher v"MSTR(MAJOR)"."MSTR(MINOR)" (18.1.2024) by Jouni 'Mr.Spiv/Scoopex' Korhonen";
+static const char s_ver[] = "$VER: Graphics Searcher v"MSTR(MAJOR)"."MSTR(MINOR)" (21.1.2024) by Jouni 'Mr.Spiv/Scoopex' Korhonen";
 
 
 /* Use the following to compile:

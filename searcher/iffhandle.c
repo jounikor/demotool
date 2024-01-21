@@ -38,8 +38,6 @@
 #include <dos/stdio.h>
 #include <dos/dos.h>
 
-#include <clib/alib_stdio_protos.h>
-#include <clib/macros.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -100,26 +98,6 @@ IFFHandle_t *initIFFHandle(void)
         p_hndl->handle = 0;
     }
 
-#if 1
-    ULONG *p_d = ((ULONG*)0x180000);
-    ULONG *p_s = (ULONG*)p_hndl;
-
-    *p_d++ = size;
-    *p_d++ = p_hndl->buffer_size;
-    *p_d++ = (ULONG)p_hndl;
-    *p_d++ = (ULONG)&p_hndl->buffer[0];
-
-    do {
-        *p_d++ = *p_s++;
-        size -= 4;
-    } while (size > 0);
-
-
-
-#endif
-
-
-
     return (struct IFFHandle*)p_hndl;
 }
 
@@ -137,7 +115,7 @@ void freeIFFHandle(struct IFFHandle *p_hndl)
 }
 
 /* Amiga implementation.. I know this is a bit nuisance but done
- * here just do add some mow possible hard to find bugs and beef
+ * here just do add some new possible hard to find bugs and beef
  * up my already rusty programming skillz..
  */
 
@@ -251,7 +229,6 @@ static int32_t s_putnum(IFFHandle_t *ctx, uint32_t num, int32_t length)
 static int32_t s_seek(IFFHandle_t *ctx, int32_t position, int32_t mode)
 {
     /* OFFSET_BEGINNING, OFFSET_CURRENT or OFFSET_END */
-static int32_t s_putnum(IFFHandle_t *ctx, uint32_t, int32_t length);
     IFFHandle_t_ *p = (IFFHandle_t_*)ctx;
 
     if (p->handle == 0) {
