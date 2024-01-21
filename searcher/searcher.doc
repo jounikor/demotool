@@ -13,7 +13,7 @@ OVERVIEW ON THE KEYS:
         F6:        INCREASE SCREEN HEIGHT BY 1
         LSHIFT+F6  DECREASE SCREEN HEIGHT BY 1
 
-        F7:     SAVE PICTURES MODE: IFF/RAW/+RAW(WITH PALETTE)/PAL(ETTE)
+        F7:     SAVE PICTURES MODE: IFF/RAW/PAL(ETTE)
         F8:     POINTER TO $000000
                 ($080000 IF 1MB CHIP)
                 ($100000 IF 2MB CHIP)
@@ -107,3 +107,23 @@ THE PALETTE EDITING: (NUMERIC PAD)
         ENTER:        INCREASE COLORS POINTER
 
 * --------------------------------------------------------------------------- *
+
+Notes about file saving:
+- Saving of a Dual Playfied is not possible.
+- When you press TAB the string gadget for text imput gets activated. You
+  need to select that with a mouse.
+- Saving a file is done ny pressing Return in the active string gadget.
+  If you click outside the gadget file is not saved and you can continue
+  as usually.
+- Saving overwrites existing files without any verifications!
+
+Notes about screen width and modulos.
+- A screen can be wider than a visible screen. In that case the saved line
+  will have that length not what is visible. Good for ripping pictures that
+  are wider than e.g. 320 lores or 640 hires pixes.
+
+TODO:
+- Palette searching algorithms.
+- Copper searching algorithms.
+- Move in color table.
+

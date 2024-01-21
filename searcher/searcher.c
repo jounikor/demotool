@@ -50,16 +50,21 @@
 #include <graphics/copper.h>
 #include <graphics/text.h>
 #include <graphics/sprite.h>
+#include <graphics/view.h>
 #include <hardware/custom.h>
 
 #include <clib/alib_stdio_protos.h>
 #include <clib/macros.h>
+#include <string.h>
 
 #include "searcher.h"
+#include "ilbm.h"
+
+static const char s_ver[] = "$VER: Graphics Searcher v"MSTR(MAJOR)"."MSTR(MINOR)" (18.1.2024) by Jouni 'Mr.Spiv/Scoopex' Korhonen";
 
 
 /* Use the following to compile:
- *  vc +aos68km -lamiga -sd -sc -O2 -c99 screen.c  -o exe
+ *  vc +kick13m -lamiga -sd -sc -O2 -c99 searcher.c  -o gs.exe
  *
  *
  */
@@ -82,28 +87,68 @@ static struct TextAttr s_topaz = {
 /*
  */
 
-static UWORD s_head_palette[] = {0x0203, 0x0102, 0x0666, 0x0f66};
+static UBYTE s_file_name_buf[MAX_FILENAME];
+static UBYTE s_file_undo_buf[MAX_FILENAME];
+
+/* my gadget for inputting filename.. */
+
+static UWORD s_strBorderData[] = {
+    0,0, GAD_STR_W + 3,0, GAD_STR_W + 3,GAD_STR_H + 3,
+    0,GAD_STR_H + 3, 0,0
+};
+
+static struct Border s_strBorder = {
+    -2,-2,1,0,JAM2,5,s_strBorderData,NULL
+};
+
+struct StringInfo s_strInfo = {
+    s_file_name_buf,
+    s_file_undo_buf,
+    0,
+    MAX_FILENAME,
+    0,
+    0,0,0,0,0,
+    NULL,0,NULL
+};
+
+struct Gadget s_strGadget = {
+    NULL, 204,50,GAD_STR_W,GAD_STR_H,
+    GFLG_GADGHCOMP|GFLG_DISABLED, GACT_RELVERIFY,
+    GTYP_STRGADGET, &s_strBorder, NULL, NULL,0,&s_strInfo,0,NULL,
+};
+
+
+/* default palette and stuff */
+
+static UWORD s_head_palette[] = {0x0203, 0x0666, 0x0102, 0x0f66};
+
+static UWORD s_def_pal[] = {
+    0x0000,0x0e60,0x0d50,0x0c40,0x0b30,0x0a20,0x0910,0x0800,
+	0x00f7,0x00e6,0x00d5,0x00c4,0x00b3,0x00a2,0x0091,0x0080,
+	0x0f7f,0x0e6e,0x0d5d,0x0c4c,0x0b3b,0x0a2a,0x0919,0x0808,
+	0x007f,0x006e,0x005d,0x004c,0x003b,0x002a,0x0019,0x0008,
+    0x0203,0x0203,0x0203    // last 3 are dummy bcos of sprites
+};
+
 
 /* text area 1 */
 static STRPTR s_text_area1[] = {"SCREEN WIDTH  0000",
                                 "PFIELD1 WIDTH 0000",
                                 "PFIELD2 WIDTH 0000",
                                 "BPLANE HEIGHT 0000",
-                                "                  ",
-                                "                  ",
                                 "ADDRESS    $000000"};
 
 /* text area 2 */
-static STRPTR s_text_area2[] = {"             ",
-                                "RGB  #   $   ",
+static STRPTR s_text_area2[] = {"RGB  #   $   ",
                                 "MOD EVEN     ",
                                 "MOD ODD      ",
                                 "DISPLAY      ",
                                 "PRIORITY     ",
-                                "SAVE AS      "};
+                                "SAVE AS      ",
+                                "             "};
 
 /* text area 3                   0 2   6 8   C E    */
-static STRPTR s_text_area3[] = {"BIT PLANES         ",
+static STRPTR s_text_area3[] = {"BITPLANES  #       ",
                                 "0       $       PF1",
                                 "1       $       PF2",
                                 "2       $       PF1",
@@ -117,32 +162,25 @@ static STRPTR s_text_lock[] = {"-","*"};
 
 static STRPTR s_text_prio[] = {" PF1"," PF2"};
 static STRPTR s_text_disp[] = {" STD"," HAM","DUAL"};
-static STRPTR s_text_save[] = {" RAW"," IFF","IFF+"," PAL"};
+static STRPTR s_text_save[] = {" IFF"," RAW"," PAL"};
+
+/*                                 0123456789abc */
+static STRPTR s_status_lines[] = {"Searcher v"MSTR(MAJOR)"."MSTR(MINOR),
+                                  "Palette found",
+                                  "No file saved",
+                                  "File saved OK",
+                                  "Everything OK",
+                                  "Out of memory",
+                                  "Internal fail",
+                                  "File exists..",
+                                  "No DPF saving"};
 
 #define TEXT_VER_LEN 4
-static STRPTR s_text_ver = "V3.0";
 static STRPTR s_text_scx = "ScoopeX";
-
 
 /* kind of a 'struct spriteimage' */
 
-ULONG __chip sprites[8][57] = { 
-    //ULONG __chip sprite0[] = {
-    {0x00000000,  /* control words */
-    0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,
-    0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,
-
-    0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,
-    0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,
-
-    0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,
-    0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,
-
-    0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,
-    0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,0xfffc0000,
-    0x00000000   /* end */
-    },
-
+ULONG __chip sprites[7][57] = { 
     //ULONG __chip sprite1[] = {
     {0x00000000,  /* control words */
     0x0000fffc,0x0000fffc,0x0000fffc,0x0000fffc,0x0000fffc,0x0000fffc,0x0000fffc,
@@ -260,8 +298,7 @@ static const struct ExtNewScreen s_newscreen = {
     0,0,                                        /* LeftEdge, TopEdge */
     640,64,2,                                   /* Width, Height, Depth */
     0,1,                                        /* DetailPen, BlockPen */
-    //SCREENHIRES|SPRITES,                      /* ViewModes */
-    0xc000,                                     /* ViewModes */
+    HIRES|SPRITES,                              /* ViewModes */
     CUSTOMSCREEN,                               /* Type */
     &s_topaz,                                   /* *Font */
     NULL,
@@ -276,10 +313,9 @@ static const struct ExtNewWindow s_newwindow = {
     0,0,                                        /* LeftEdge, TopEdge */
     640,64,                                     /* Width, Height */
     JAM1,JAM2,                                  /* DetailPen, BlockPen */
-    IDCMP_RAWKEY,                               /* IDCMPFlags */
-    WFLG_BORDERLESS|WFLG_RMBTRAP|
-    WFLG_ACTIVATE|WFLG_NOCAREREFRESH,           /* Flags */
-    NULL,                                       /* *FirstGadget */
+    IDCMP_RAWKEY|IDCMP_GADGETUP,                /* IDCMPFlags */
+    WFLG_BORDERLESS|WFLG_RMBTRAP|WFLG_ACTIVATE, /* Flags */
+    &s_strGadget,                               /* *FirstGadget */
     NULL,                                       /* *CheckMark */
     NULL,                                       /* *Title */
     NULL,                                       /* *Screen */
@@ -292,13 +328,41 @@ static const struct ExtNewWindow s_newwindow = {
 
 static struct Screen *sp_screen = NULL;
 static struct Window *sp_window = NULL;
-static struct SimpleSprite s_spr[8];
+static struct SimpleSprite s_spr[7];
 
+/* Function prototypes.. unneeded but still here */
+static BOOL open_screen_window(void);
+static BOOL setup_sprites(void);
+static void close_screen_window(void);
+static struct UCopList* setup_copper(struct Screen* p_scr, cop_cfg_t* p_cfg);
+static void update_head_texts(BOOL statics, ULONG texts, cop_cfg_t *p_cfg);
+static void update_pal_texts(BOOL on);
+static ULONG init_cop_cfg(cop_cfg_t *p_cfg, BOOL pal_only);
+static ULONG inc_scr_width(cop_cfg_t *p_cfg);
+static ULONG dec_scr_width(cop_cfg_t *p_cfg);
+static ULONG reset_bplane_addrs(cop_cfg_t *p_cfg, LONG ptr);
+static ULONG set_bplane_lock(cop_cfg_t *p_cfg, int bpl_idx);
+static ULONG handle_display_mode(cop_cfg_t *p_cfg);
+static ULONG handle_save_as(cop_cfg_t *p_cfg);
+static ULONG set_bplane_height(cop_cfg_t *p_cfg, WORD height);
+static ULONG handle_bplane_height(cop_cfg_t *p_cfg, int qual);
+static ULONG dec_bplane_num(cop_cfg_t *p_cfg);
+static ULONG inc_bplane_num(cop_cfg_t *p_cfg);
+static ULONG handle_bplane_move(cop_cfg_t *p_cfg, int key, int qual);
+static ULONG set_resolution(cop_cfg_t *p_cfg, BOOL hires);
+static ULONG handle_palette(cop_cfg_t *p_cfg, int key);
+static ULONG dec_palette_index(cop_cfg_t *p_cfg);
+static ULONG inc_palette_index(cop_cfg_t *p_cfg);
+static ULONG set_chipmem_addr(cop_cfg_t *p_cfg, int key);
+static ULONG handle_modulos(cop_cfg_t *p_cfg, int key, int qual);
+static ULONG handle_priority(cop_cfg_t *p_cfg);
+static ULONG handle_filename(cop_cfg_t *p_cfg);
+static int handle_filesave(cop_cfg_t *p_cfg, struct Gadget *p_gad);
+static BOOL main_key_loop(int key, int qual, cop_cfg_t *p_cfg);
 
+/* Spaghetti code starts.. there are hardly comments.. */
 
-
-
-BOOL open_screen_window(void)
+static BOOL open_screen_window(void)
 {
     sp_screen = OpenScreen((const struct NewScreen *)&s_newscreen);
 
@@ -319,21 +383,21 @@ BOOL open_screen_window(void)
 }
 
 
-BOOL setup_sprites(void)
+static BOOL setup_sprites(void)
 {
     SHORT spr_num;
     int n;
 
-    for (n = 1; n < 8; n++) {
-        spr_num = GetSprite(&s_spr[n],n);
+    /* sprites 1 to 7.. in C, though, indexed 0 to 6. */
 
-        if (spr_num < 0) {
-            Printf("Sprite%ld get failed\n",n);
-        } else {
+    for (n = 0; n < 7; n++) {
+        spr_num = GetSprite(&s_spr[n],n+1);
+
+        if (spr_num >= 0) {
             s_spr[n].height = 11*5+1;
-            s_spr[n].x = 28*(n-1);
+            s_spr[n].x = 28*n;
             s_spr[n].y = 4;
-            s_spr[n].num = n;
+            s_spr[n].num = n+1;
             ChangeSprite(&sp_screen->ViewPort,&s_spr[n],(void*)&sprites[n]);
         }
     }
@@ -342,7 +406,7 @@ BOOL setup_sprites(void)
 }
 
 
-void close_screen_window(void)
+static void close_screen_window(void)
 {
     int n;
 
@@ -357,15 +421,6 @@ void close_screen_window(void)
         CloseScreen(sp_screen);
     }
 }
-
-
-static UWORD s_def_pal[] = {
-    0x0000,0x0e60,0x0d50,0x0c40,0x0b30,0x0a20,0x0910,0x0800,
-	0x00f7,0x00e6,0x00d5,0x00c4,0x00b3,0x00a2,0x0091,0x0080,
-	0x0f7f,0x0e6e,0x0d5d,0x0c4c,0x0b3b,0x0a2a,0x0919,0x0808,
-	0x007f,0x006e,0x005d,0x004c,0x003b,0x002a,0x0019,0x0008,
-    0x0000,0x0000,0x0000    // last 3 are dummy bcos of sprites
-};
 
 
 static struct UCopList* setup_copper(struct Screen* p_scr, cop_cfg_t* p_cfg)
@@ -523,7 +578,7 @@ static struct UCopList* setup_copper(struct Screen* p_scr, cop_cfg_t* p_cfg)
 
 #if 0
     /* dump */
-    ULONG *p_d = ((ULONG*)0x80000);
+    ULONG *p_d = ((ULONG*)0x180000);
     ULONG *p_s = (ULONG*)GfxBase->LOFlist;
 
     do {
@@ -543,14 +598,14 @@ static void update_head_texts(BOOL statics, ULONG texts, cop_cfg_t *p_cfg)
 
     if (statics) {
         SetDrMd(sp_window->RPort,JAM2);
-        SetAPen(sp_window->RPort,2);
-        SetBPen(sp_window->RPort,1);
+        SetAPen(sp_window->RPort,1);
+        SetBPen(sp_window->RPort,2);
 
         /* Area 1 */
         x = TEXT_AREA1_X;
         y = TEXT_AREA1_Y;
 
-        for (n = 0; n < 7; n++) {
+        for (n = 0; n < 5; n++) {
             Move(sp_window->RPort,x,y); y += 8;
             Text(sp_window->RPort,s_text_area1[n],TEXT_AREA1_LEN);
         }
@@ -584,14 +639,15 @@ static void update_head_texts(BOOL statics, ULONG texts, cop_cfg_t *p_cfg)
             Text(sp_window->RPort,&s_text_scx[n],1);
         }
 
-        /* version */
-        Move(sp_window->RPort,140,56);
-        Text(sp_window->RPort,s_text_ver,TEXT_VER_LEN);
+        /* Filename */
+        SetAPen(sp_window->RPort,1);
+        Move(sp_window->RPort,132,56);
+        Text(sp_window->RPort,"FILENAME",8);
     }
 
     SetDrMd(sp_window->RPort,JAM2);
-    SetAPen(sp_window->RPort,2);
-    SetBPen(sp_window->RPort,1);
+    SetAPen(sp_window->RPort,1);
+    SetBPen(sp_window->RPort,2);
 
     /* Area 1 */
     if (texts & TEXT_SCREEN) {
@@ -628,32 +684,32 @@ static void update_head_texts(BOOL statics, ULONG texts, cop_cfg_t *p_cfg)
     /* Area 2 */
     if (texts & TEXT_RGB) {
         sprintf(buf,"%02d",p_cfg->rgb_idx);
-        Move(sp_window->RPort,TEXT_AREA2_X+6*8,TEXT_AREA2_Y+1*8);
+        Move(sp_window->RPort,TEXT_AREA2_X+6*8,TEXT_AREA2_Y+0*8);
         Text(sp_window->RPort,buf,2);
         sprintf(buf,"%03x",p_cfg->pal[p_cfg->rgb_idx]);
-        Move(sp_window->RPort,TEXT_AREA2_X+10*8,TEXT_AREA2_Y+1*8);
+        Move(sp_window->RPort,TEXT_AREA2_X+10*8,TEXT_AREA2_Y+0*8);
         Text(sp_window->RPort,buf,3);
     }
     if (texts & TEXT_MODEVEN) {
         sprintf(buf,"%+4d",p_cfg->mod_even);
-        Move(sp_window->RPort,TEXT_AREA2_X+9*8,TEXT_AREA2_Y+2*8);
+        Move(sp_window->RPort,TEXT_AREA2_X+9*8,TEXT_AREA2_Y+1*8);
         Text(sp_window->RPort,buf,4);
     }
     if (texts & TEXT_MODODD) {
         sprintf(buf,"%+4d",p_cfg->mod_odd);
-        Move(sp_window->RPort,TEXT_AREA2_X+9*8,TEXT_AREA2_Y+3*8);
+        Move(sp_window->RPort,TEXT_AREA2_X+9*8,TEXT_AREA2_Y+2*8);
         Text(sp_window->RPort,buf,4);
     }
     if (texts & TEXT_DISPLAY) {
-        Move(sp_window->RPort,TEXT_AREA2_X+9*8,TEXT_AREA2_Y+4*8);
+        Move(sp_window->RPort,TEXT_AREA2_X+9*8,TEXT_AREA2_Y+3*8);
         Text(sp_window->RPort,s_text_disp[p_cfg->display],4);
     }
     if (texts & TEXT_PRIORITY) {
-        Move(sp_window->RPort,TEXT_AREA2_X+9*8,TEXT_AREA2_Y+5*8);
+        Move(sp_window->RPort,TEXT_AREA2_X+9*8,TEXT_AREA2_Y+4*8);
         Text(sp_window->RPort,s_text_prio[p_cfg->priority],4);
     }
     if (texts & TEXT_SAVEAS) {
-        Move(sp_window->RPort,TEXT_AREA2_X+9*8,TEXT_AREA2_Y+6*8);
+        Move(sp_window->RPort,TEXT_AREA2_X+9*8,TEXT_AREA2_Y+5*8);
         Text(sp_window->RPort,s_text_save[p_cfg->save_as],4);
     }
 
@@ -695,11 +751,28 @@ static void update_head_texts(BOOL statics, ULONG texts, cop_cfg_t *p_cfg)
 
         for (n = 0; n < 6; n++) {
             Move(sp_window->RPort,TEXT_AREA3_X+9*8,y);
-            sprintf(buf,"%06lx",p_cfg->bpl_ptr[n] & 0x1ffffe);
+            sprintf(buf,"%06lx",p_cfg->bpl_ptr[n]);
             Text(sp_window->RPort,buf,6);
             y += 8;
         }
     }
+
+    /* Area2 and status line */
+
+    SetAPen(sp_window->RPort,3);
+
+    if (texts & TEXT_STATUS) {
+        Move(sp_window->RPort,TEXT_AREA2_X,TEXT_AREA2_Y+6*8);
+        
+        if (p_cfg->ioerr == 0) {
+            /* if no error.. print a status line */
+            Text(sp_window->RPort,s_status_lines[p_cfg->status],13);
+        } else {
+            sprintf(buf,"IoErr: %6ld",p_cfg->ioerr);
+            Text(sp_window->RPort,s_text_save[p_cfg->ioerr],13);
+        }
+    }
+
 
     return;
 }
@@ -730,7 +803,6 @@ static void update_pal_texts(BOOL on)
 }
 
 
-
 static ULONG init_cop_cfg(cop_cfg_t *p_cfg, BOOL pal_only)
 {
     int n;
@@ -747,6 +819,8 @@ static ULONG init_cop_cfg(cop_cfg_t *p_cfg, BOOL pal_only)
         p_cfg->bpl_ptr[n] = 0x4000;
     }
 
+    p_cfg->max_chipmem = SysBase->MaxLocMem & 0xffff0000;
+
     p_cfg->mod_even = 0;
     p_cfg->mod_odd = 0;
 
@@ -755,7 +829,7 @@ static ULONG init_cop_cfg(cop_cfg_t *p_cfg, BOOL pal_only)
 
     p_cfg->display  = IDX_DISP_STD;
     p_cfg->priority = IDX_PRIO_PF1;
-    p_cfg->save_as  = IDX_SAVE_RAW;
+    p_cfg->save_as  = IDX_SAVE_IFF;
 
     p_cfg->pf1shft = 0;
     p_cfg->pf2shft = 0;
@@ -763,30 +837,37 @@ static ULONG init_cop_cfg(cop_cfg_t *p_cfg, BOOL pal_only)
     p_cfg->flags = MODE_STD;
     p_cfg->bpl_lock = 0x3f; /* all six planes */
 
-    p_cfg->key_state = STM_MAIN;
     p_cfg->rgb_idx = 0;
-    
+
+    p_cfg->ioerr = 0;
+    p_cfg->status = IDX_STATUS_VERSION;
+
     /* update everything */
     return ~0;
 }
 
+
 static ULONG inc_scr_width(cop_cfg_t *p_cfg)
 {
-    /* Also take overscan into account */
     WORD new_width = p_cfg->scr_width;
-    WORD max;
 
     if (p_cfg->flags & MODE_HIRES) {
         new_width += 32;
-        max = 640+96;
     } else {
-        new_width += 32;
-        max = 320+48;
+        new_width += 16;
     }
 
-    p_cfg->scr_width = new_width < max ? new_width : max;
+    /* The picture can be a lot bigger than the visible screen.
+     * Larger than visible screen picture act as there was modulo
+     * added but in practise the real difference is when saving the
+     * picture.. when saving modulos are not part of the saved picture.
+     * With this kludge it is possible tosave like 1000 pixels wide
+     * pictures.
+     */
+    p_cfg->scr_width = new_width < MAX_BPLANE_WIDTH ? new_width : MAX_BPLANE_WIDTH;
     return TEXT_SCREEN|TEXT_PF1WIDTH|TEXT_PF2WIDTH;
 }
+
 
 static ULONG dec_scr_width(cop_cfg_t *p_cfg)
 {
@@ -804,6 +885,7 @@ static ULONG dec_scr_width(cop_cfg_t *p_cfg)
     p_cfg->scr_width = new_width > min ? new_width : min;
     return TEXT_SCREEN|TEXT_PF1WIDTH|TEXT_PF2WIDTH;
 }
+
 
 static ULONG reset_bplane_addrs(cop_cfg_t *p_cfg, LONG ptr)
 {
@@ -831,6 +913,7 @@ static ULONG set_bplane_lock(cop_cfg_t *p_cfg, int bpl_idx)
     return TEXT_BPLLOCKS;
 }
 
+
 static ULONG handle_display_mode(cop_cfg_t *p_cfg)
 {
     if (++p_cfg->display > IDX_DISP_MAX) {
@@ -842,6 +925,7 @@ static ULONG handle_display_mode(cop_cfg_t *p_cfg)
 
     return TEXT_DISPLAY;
 }
+
 
 static ULONG handle_save_as(cop_cfg_t *p_cfg)
 {
@@ -857,6 +941,7 @@ static ULONG set_bplane_height(cop_cfg_t *p_cfg, WORD height)
     p_cfg->scr_height = height;
     return TEXT_HEIGHT;
 }
+
 
 static ULONG handle_bplane_height(cop_cfg_t *p_cfg, int qual)
 {
@@ -874,6 +959,7 @@ static ULONG handle_bplane_height(cop_cfg_t *p_cfg, int qual)
     return TEXT_HEIGHT;
 }
 
+
 static ULONG dec_bplane_num(cop_cfg_t *p_cfg)
 {
     if (p_cfg->num_bpl > 0) {
@@ -882,6 +968,7 @@ static ULONG dec_bplane_num(cop_cfg_t *p_cfg)
     }
     return 0;
 }
+
 
 static ULONG inc_bplane_num(cop_cfg_t *p_cfg)
 {
@@ -892,6 +979,7 @@ static ULONG inc_bplane_num(cop_cfg_t *p_cfg)
     }
     return 0;
 }
+
 
 static ULONG handle_bplane_move(cop_cfg_t *p_cfg, int key, int qual)
 {
@@ -939,10 +1027,10 @@ static ULONG handle_bplane_move(cop_cfg_t *p_cfg, int key, int qual)
         if (p_cfg->bpl_lock & (1 << n)) {
             if (n & 1) {
                 /* even bitplane */
-                p_cfg->bpl_ptr[n] += (step_even * m);
+                p_cfg->bpl_ptr[n] = (p_cfg->bpl_ptr[n] + (step_even * m)) & (p_cfg->max_chipmem-1);
             } else {
                 /* odd bitplane */
-                p_cfg->bpl_ptr[n] += (step_odd * m);
+                p_cfg->bpl_ptr[n] = (p_cfg->bpl_ptr[n] + (step_odd * m)) & (p_cfg->max_chipmem-1);
             }
         }
     }
@@ -950,9 +1038,10 @@ static ULONG handle_bplane_move(cop_cfg_t *p_cfg, int key, int qual)
     return TEXT_BPLADDRS;
 }
 
+
 static ULONG set_resolution(cop_cfg_t *p_cfg, BOOL hires)
 {
-    ULONG ret = TEXT_RESO|TEXT_SCREEN;
+    ULONG ret = TEXT_RESO|TEXT_SCREEN|TEXT_PF1WIDTH|TEXT_PF2WIDTH;
 
     if (hires) {
         p_cfg->flags |= MODE_HIRES;
@@ -1041,17 +1130,20 @@ static ULONG handle_palette(cop_cfg_t *p_cfg, int key)
     return TEXT_RGB;
 }
 
+
 static ULONG dec_palette_index(cop_cfg_t *p_cfg)
 {
     p_cfg->rgb_idx = (p_cfg->rgb_idx-1) & 0x1f;
     return TEXT_RGB;
 }
 
+
 static ULONG inc_palette_index(cop_cfg_t *p_cfg)
 {
     p_cfg->rgb_idx = (p_cfg->rgb_idx+1) & 0x1f;
     return TEXT_RGB;
 }
+
 
 static ULONG set_chipmem_addr(cop_cfg_t *p_cfg, int key)
 {
@@ -1060,24 +1152,38 @@ static ULONG set_chipmem_addr(cop_cfg_t *p_cfg, int key)
 
     switch (key) {
     case KEY_F8:
-        ptr = 0;
+        switch (p_cfg->max_chipmem >> 16) {
+        case 0x4:   /* 256K CHIP */
+        case 0x8:   /* 512K CHIP */
+            ptr = 0x00000;
+            break;        
+        case 0x10:  /* 1M CHIP */
+            ptr = 0x80000;
+            break;
+        case 0x20:  /* 2M CHIP */
+            ptr = 0x100000;
+            break;
+        default:
+            return 0;
+        }
         break;
     case KEY_F9:
-        ptr = 0x50000;
-        break;
-    default:
-        return 0;
-    }
-
-    switch (SysBase->MaxLocMem >> 20) {
-    case 0: /* 512K CHIP */
-        break;        
-    case 1: /* 1M CHIP */
-        ptr += 0x80000;
-        break;
-    case 2: /* 2M CHIP */
-        ptr += 0x100000;
-        break;
+        switch (p_cfg->max_chipmem >> 16) {
+        case 0x4:   /* 256K CHIP */
+            ptr = 0x20000;
+        case 0x8:   /* 512K CHIP */
+            ptr = 0x50000;
+            break;        
+        case 0x10:  /* 1M CHIP */
+            ptr = 0xd0000;
+            break;
+        case 0x20:  /* 2M CHIP */
+            ptr = 0x150000;
+            break;
+        default:
+            return 0;
+        }
+        break;   
     default:
         return 0;
     }
@@ -1088,6 +1194,7 @@ static ULONG set_chipmem_addr(cop_cfg_t *p_cfg, int key)
 
     return TEXT_BPLADDRS;
 }
+
 
 static ULONG handle_modulos(cop_cfg_t *p_cfg, int key, int qual)
 {
@@ -1129,34 +1236,98 @@ static ULONG handle_modulos(cop_cfg_t *p_cfg, int key, int qual)
     }
 
     if (qual & IEQUALIFIER_RSHIFT) {
-        if (ABS(p_cfg->mod_even + step_even) < 1000 ) {
+        if (ABS(p_cfg->mod_even + step_even) < MAX_MODULO ) {
             p_cfg->mod_even = p_cfg->mod_even + step_even;
         }
         return TEXT_MODEVEN;
     } else if (qual & IEQUALIFIER_LSHIFT) {
-        if (ABS(p_cfg->mod_odd + step_odd) < 1000) {
+        if (ABS(p_cfg->mod_odd + step_odd) < MAX_MODULO) {
             p_cfg->mod_odd = p_cfg->mod_odd + step_odd;
         }
         return TEXT_MODODD;
     }
-    if (ABS(p_cfg->mod_odd + step_odd) < 1000) {
+    if (ABS(p_cfg->mod_odd + step_odd) < MAX_MODULO) {
         p_cfg->mod_odd  = p_cfg->mod_odd + step_odd;
     }
-    if (ABS(p_cfg->mod_even + step_even) < 1000) {
+    if (ABS(p_cfg->mod_even + step_even) < MAX_MODULO) {
         p_cfg->mod_even = p_cfg->mod_even + step_even;
     }
     return TEXT_MODODD|TEXT_MODEVEN;
 }
 
+
 static ULONG handle_priority(cop_cfg_t *p_cfg)
 {
     if (++p_cfg->priority > IDX_PRIO_MAX) {
         p_cfg->priority = 0;
+        p_cfg->flags &= ~MODE_PF2PRI;
+    } else {
+        p_cfg->flags |= MODE_PF2PRI;
     }
 
     return TEXT_PRIORITY;
 }
 
+
+static ULONG handle_filename(cop_cfg_t *p_cfg)
+{
+    OnGadget(&s_strGadget,sp_window,NULL);
+    return 0;
+}
+
+
+static int handle_filesave(cop_cfg_t *p_cfg, struct Gadget *p_gad)
+{
+    IFFHandle_t* fh;
+    int ret;
+    char *name = ((struct StringInfo*)p_gad->SpecialInfo)->Buffer;
+
+    OffGadget(p_gad,sp_window,NULL);
+
+    if (strlen(name) <= 0) {
+        p_cfg->ioerr = 0;
+        p_cfg->status = IDX_STATUS_NOSAVE;
+        update_head_texts(FALSE,TEXT_STATUS,p_cfg);
+        return -1;
+    }
+
+    p_cfg->status = IDX_STATUS_SAVEOK;
+    p_cfg->ioerr = 0;
+
+    /* Here be:
+     * - prepare file to save
+     * - Open file & save
+     */
+
+    if ((fh = initIFFHandle()) == NULL) {
+        p_cfg->ioerr = 0;
+        p_cfg->status = IDX_STATUS_NORAM;
+        update_head_texts(FALSE,TEXT_STATUS,p_cfg);
+        return -1;        
+    }
+    if (fh->open(fh,name,MODE_NEWFILE)) {
+        switch (p_cfg->save_as) {
+        case IDX_SAVE_IFF:
+            save_iff(fh,p_cfg);
+            break;
+        case IDX_SAVE_RAW:
+            save_raw(fh,p_cfg);
+            break;
+        case IDX_SAVE_PAL:
+            save_pal(fh,p_cfg);
+            break;
+        default:
+            p_cfg->status = IDX_STATUS_FAULT;
+            break;
+        }
+
+        fh->close(fh);
+    }
+
+    freeIFFHandle(fh);
+    update_head_texts(FALSE,TEXT_STATUS,p_cfg);
+    return -1;
+}
 
 
 static BOOL main_key_loop(int key, int qual, cop_cfg_t *p_cfg)
@@ -1260,9 +1431,8 @@ static BOOL main_key_loop(int key, int qual, cop_cfg_t *p_cfg)
         update = handle_modulos(p_cfg,key,qual);
         break;
 
-    case KEY_ESC:
-    case KEY_RETURN:
-        p_cfg->key_state = STM_MAIN;
+    case KEY_TAB:
+        update = handle_filename(p_cfg);
         break;
 
     default:
@@ -1280,11 +1450,10 @@ static BOOL main_key_loop(int key, int qual, cop_cfg_t *p_cfg)
 }
 
 
-
-
 int main(char *argv)
 {
     struct IntuiMessage *p_msg;
+    struct Gadget *p_gad;
     ULONG win_sig_bit, wait_mask, sig;
     BOOL done = FALSE;
     struct UCopList* p_ucl;
@@ -1314,36 +1483,27 @@ int main(char *argv)
             if (sig & (1L << win_sig_bit)) {
                 while (p_msg = (struct IntuiMessage *)GetMsg(sp_window->UserPort)) {
                     key = -1;
+                    p_gad = NULL;
 
                     if (p_msg->Class == IDCMP_RAWKEY) {
                         key = p_msg->Code;
                         qual = p_msg->Qualifier;
                     }
+                    if (p_msg->Class == IDCMP_GADGETUP) {
+                        p_gad = (struct Gadget*)p_msg->IAddress;
+                    }
 
                     ReplyMsg((struct Message *)p_msg);
-                    
-                    if (key < 0) {
-                        continue;
+
+                    if (p_gad) {
+                        key = handle_filesave(&cfg,p_gad);
                     }
-                    
-                    switch (cfg.key_state) {
-                    case STM_MAIN:
+                    if (key >= 0) {
                         done = main_key_loop(key,qual,&cfg);
-                        break;
-                    case STM_NUMPAD:
-                        break;
-                    case STM_SEARCH:
-                        break;
-                    case STM_HEIGHT:
-                        break;
-                    default:
-                        break;
                     }
                 }
             }
         }
-    } else {
-        WriteStr("Pieleen meni\n");
     }
 
     if (p_ucl) {

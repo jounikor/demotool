@@ -33,6 +33,13 @@
 
 #include <exec/types.h>
 
+/* versioning */
+#define MAJOR       3
+#define MINOR       0
+
+#define TSTR(s) #s
+#define MSTR(s) TSTR(s)
+
 /* Aligh display modes with the relevant indices */
 #define MODE_STD    0x00000001
 #define MODE_HAM    0x00000002
@@ -43,6 +50,7 @@
 typedef struct {
     UWORD pal[32+3];
     LONG bpl_ptr[6];
+    LONG max_chipmem;
     WORD mod_even;      // in bytes
     WORD mod_odd;       // in bytes
     WORD scr_width;     // in pixels
@@ -54,10 +62,11 @@ typedef struct {
     UBYTE priority;
     UBYTE save_as;
     UBYTE bpl_lock;
-    UBYTE key_state;
-    BYTE padding;
     BYTE rgb_idx;
     ULONG flags;
+    LONG ioerr;
+    UBYTE status;
+    UBYTE padding;
 } cop_cfg_t;
 
 #define TEXT_AREA0_X    10
@@ -82,6 +91,7 @@ typedef struct {
 #define TEXT_PRIORITY   0x00000800
 #define TEXT_SAVEAS     0x00001000
 #define TEXT_RGB        0x00002000
+#define TEXT_STATUS     0x00004000  /* Status line */
 
 #define TEXT_AREA3_X    470
 #define TEXT_AREA3_Y    3+7
@@ -93,6 +103,12 @@ typedef struct {
 
 #define RGB_CHANGE      0x00100000
 
+
+/* limits */
+#define MAX_LORES_SCREEN_WIDTH  320+48
+#define MAX_HIRES_SCREEN_WIDTH  640+96
+#define MAX_BPLANE_WIDTH        4096
+#define MAX_MODULO              1000
 
 /* mask to determine if the copper list needs to be updated */
 #define TEXT_COPPER_MASK    TEXT_MODEVEN| \
@@ -108,11 +124,22 @@ typedef struct {
 #define IDX_DISP_DPF    2
 #define IDX_DISP_MAX    2
 
-#define IDX_SAVE_RAW    0
-#define IDX_SAVE_IFF    1
-#define IDX_SAVE_IFFP   2
-#define IDX_SAVE_PAL    3
-#define IDX_SAVE_MAX    3
+#define IDX_SAVE_IFF    0
+#define IDX_SAVE_RAW    1
+#define IDX_SAVE_PAL    2
+#define IDX_SAVE_MAX    2
+
+#define IDX_STATUS_VERSION  0
+#define IDX_STATUS_PALETTE  1
+#define IDX_STATUS_NOSAVE   2
+#define IDX_STATUS_SAVEOK   3
+#define IDX_STATUS_OK       4
+#define IDX_STATUS_NORAM    5
+#define IDX_STATUS_FAULT    6
+#define IDX_STATUS_EXISTS   7
+#define IDX_STATUS_DUALPF   8
+#define IDX_STATUS_MAX      8
+
 
 /* key codes */
 #define KEY_ESC     0x45
@@ -189,27 +216,34 @@ typedef struct {
 #define KEY_NP_1        0x1d
 #define KEY_NP_MINUS    0x4a
 
+/*
+ */
+#define MAX_FILENAME    128
+#define GAD_STR_W       144
+#define GAD_STR_H       8
 
-/* state machine for key reading */
-#define STM_MAIN    0
-#define STM_NUMPAD  1
-#define STM_SEARCH  2
-#define STM_HEIGHT  3
+/*
+ */
+
+
 
 
 /* screenn planning .. */
 #if 0
+
+128
+
 206                 358            470
 0         1         2         3    |    4         5
 012345678901234567890123456789012345678901234567890123
 
-SCREEN WIDTH  0000                 BIT PLANES  4 HIRES
-PFIELD1 WIDTH 0000  RGB  #00 $000  0 ON  * $100000 PF1
-PFIELD2 WIDTH 0000  MOD EVEN 0000  1 ON  - $100000 PF2
-BPLANE HEIGHT 0000  MOD ODD  0000  2 ON  * $100000 PF1
-                    DISPLAY   DPF  3 ON  * $100000 PF2
-status comments     PRIORITY  PF1  4 OFF - $100000 PF1
-ADDRESS    $000000  SAVE AS   IFF  5 OFF - $100000 PF2
+SCREEN WIDTH  0000  RGB  #00 $000  BIT PLANES  4 HIRES
+PFIELD1 WIDTH 0000  MOD EVEN 0000  0 ON  * $100000 PF1
+PFIELD2 WIDTH 0000  MOD ODD  0000  1 ON  - $100000 PF2
+BPLANE HEIGHT 0000  DISPLAY   DPF  2 ON  * $100000 PF1
+ADDRESS    $000000  PRIORITY  PF1  3 ON  * $100000 PF2
+                    SAVE AS   IFF  4 OFF - $100000 PF1
+                    status line..  5 OFF - $100000 PF2
 
 
 SAVE AS:
