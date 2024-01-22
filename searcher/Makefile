@@ -5,14 +5,14 @@
 .PHOBY: all clean dist
 .SUFFIXES: .o .c
 
-#OS := __AMIGA__
+OS := __AMIGA__
 MAKE := make
 LHA  := $(shell which lha)
 
 ifeq ($(OS),__AMIGA__)
 	CC := vc
 	LDFLAGS := +kick13m -lamiga
-	CFLAGS :=  +kick13m -sc -sd -O2 -cpu=68000 -c99 -Inetinclude: -D$(OS)
+	CFLAGS :=  +kick13m -sc -sd -cpu=68000 -c99 -Inetinclude: -D$(OS)
 	LIBDIR := 
 	LIBS :=
 	RM := delete

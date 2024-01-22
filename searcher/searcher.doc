@@ -109,7 +109,6 @@ THE PALETTE EDITING: (NUMERIC PAD)
 * --------------------------------------------------------------------------- *
 
 Notes about file saving:
-- Saving of a Dual Playfied is not possible.
 - When you press TAB the string gadget for text imput gets activated. You
   need to select that with a mouse.
 - Saving a file is done ny pressing Return in the active string gadget.

@@ -17,7 +17,7 @@
 #include "ilbm.h"
 
 
-long save_iff(IFFHandle_t *iff, cop_cfg_t *cfg)
+long save_iff(IFFHandle_t *iff, cop_cfg_t *cfg, BOOL odd)
 {
     int ncolors;
     ULONG modeid = 0;
@@ -39,9 +39,6 @@ long save_iff(IFFHandle_t *iff, cop_cfg_t *cfg)
     } else {
         ncolors = 32;
     }
-    if (cfg->flags & MODE_DUALPF) {
-        return -1;
-    }
     if (cfg->flags & MODE_STD) {
         if (nbplanes == 6) {
             modeid |= EXTRA_HALFBRITE;
@@ -53,6 +50,24 @@ long save_iff(IFFHandle_t *iff, cop_cfg_t *cfg)
     if (cfg->flags & MODE_HAM) {
         modeid |= HAM;
         nbplanes = 6;
+    }
+
+    /* This is a bit odd stuff to save either the odd or even
+     * bitplanes of a dual playfield picture. The number of
+     * bitplanes and colors need to be adjusted accordingly.
+     * Note that even if nbplanes is scales down the real number
+     * of bitplanes is still kept in cfg->num_bpl.
+     */
+    if (cfg->flags & MODE_DUALPF && cfg->num_bpl > 1) {
+        nbplanes = (nbplanes & 1) + (nbplanes >> 1);
+
+        if (!odd) {
+            nbplanes = cfg->num_bpl - nbplanes;
+        }
+
+        ncolors = 1 << nbplanes;
+        /* undo modeid if HAM or HALFBRITE */
+        modeid = modeid & ~(HAM | EXTRA_HALFBRITE);
     }
 
     bmhd.w = cfg->scr_width;
@@ -78,13 +93,11 @@ long save_iff(IFFHandle_t *iff, cop_cfg_t *cfg)
     /* calculate the total IFF file size, excluding FORM..
      * No compression so that we know BODY size in advance
      */
-
     form_size =    
         4 +                                     /* ID_ILBM  */
         4 + 4 + sizeof(BitMapHeader_t) +        /* BMHD + size + content */
         4 + 4 + ncolors*sizeofColorRegister +   /* CMAP + size + content */
         4 + 4 + 4;                              /* CMAG + size + content */
-
 
     /* add body size.. all source bitmaps are divisible by 16 pixels */
     body_size = bmhd.h * nbplanes * bytes_per_row;
@@ -98,7 +111,6 @@ long save_iff(IFFHandle_t *iff, cop_cfg_t *cfg)
         return n;
     }
 
-
     /* ILDM.BMHD */
     if ((n = iff->putnum(iff,ID_ILBM,4)) < 0) {
         return n;
@@ -111,7 +123,6 @@ long save_iff(IFFHandle_t *iff, cop_cfg_t *cfg)
     if ((n = iff->putnum(iff,sizeof(BitMapHeader_t),4)) < 0) {
         return n;
     }
-
     if ((n = iff->putnum(iff,bmhd.w,2)) < 0) {
         return n;
     }
@@ -124,7 +135,6 @@ long save_iff(IFFHandle_t *iff, cop_cfg_t *cfg)
     if ((n = iff->putnum(iff,bmhd.y,2)) < 0) {
         return n;
     }
-    
     if ((n = iff->putc(iff,bmhd.nPlanes)) < 0) {
         return n;
     }
@@ -137,7 +147,6 @@ long save_iff(IFFHandle_t *iff, cop_cfg_t *cfg)
     if ((n = iff->putc(iff,bmhd.reserved1)) < 0) {
         return n;
     }
-
     if ((n = iff->putnum(iff,bmhd.transparentColor,2)) < 0) {
         return n;
     }
@@ -147,7 +156,6 @@ long save_iff(IFFHandle_t *iff, cop_cfg_t *cfg)
     if ((n = iff->putc(iff,bmhd.yAspect)) < 0) {
         return n;
     }
-
     if ((n = iff->putnum(iff,bmhd.pageWidth,2)) < 0) {
         return n;
     }
@@ -164,7 +172,14 @@ long save_iff(IFFHandle_t *iff, cop_cfg_t *cfg)
     }
 
     /* Store each 4-bit value n as nn */
-    tabw = cfg->pal;
+    if (cfg->flags & MODE_DUALPF && cfg->num_bpl > 1 && !odd) {
+        /* In case of dual playfield even colors start from the
+         * palette entry #8:
+         */
+        tabw = &cfg->pal[8];
+    } else {
+        tabw = cfg->pal;
+    }
 
     for( ;  ncolors;  --ncolors ) {
         /* Red */
@@ -205,17 +220,25 @@ long save_iff(IFFHandle_t *iff, cop_cfg_t *cfg)
         return n;
     }
 
-    /* this might be a bit complicated scatter saving.. */
-
-    for (m = 0; m < nbplanes; m++) {
+    /* this might be a bit complicated scatter saving..
+     * We use cfg->num_bpl since in case of dual playfield
+     * the nbplanes is the number of PF1 or PF2 planes, not
+     * the total number of bitplanes in the captured picture.
+     */
+    for (m = 0; m < cfg->num_bpl; m++) {
         planes[m] = (UBYTE *)cfg->bpl_ptr[m];
     }
 
     for (h = 0; h < bmhd.h; h++) {
         /* save one row of all planes */
-        for (m = 0; m < nbplanes; m++) {
-            if ((n = iff->write(iff,planes[m],bytes_per_row)) < 0) {
-                return -1;
+        for (m = 0; m < cfg->num_bpl; m++) {
+            if (!(cfg->flags & MODE_DUALPF) ||
+               (!odd && (m & 1)) ||
+               (odd && (!(m & 1)))) {
+
+                if ((n = iff->write(iff,planes[m],bytes_per_row)) < 0) {
+                    return -1;
+                }
             }
             /* go to next lines.. screen width + modulo */
             planes[m] += bytes_per_row;
@@ -233,7 +256,7 @@ long save_iff(IFFHandle_t *iff, cop_cfg_t *cfg)
     return form_size+8;
 }
 
-long save_raw(IFFHandle_t *iff, cop_cfg_t *cfg)
+long save_raw(IFFHandle_t *iff, cop_cfg_t *cfg, BOOL odd)
 {
     int32_t n, m, h;
     UBYTE *planes[MAXSAVEDEPTH];
@@ -241,9 +264,6 @@ long save_raw(IFFHandle_t *iff, cop_cfg_t *cfg)
     LONG body_size;
     int nbplanes = cfg->num_bpl;
 
-    if (cfg->flags & MODE_DUALPF) {
-        return -1;
-    }
     if (nbplanes > 6) {
         nbplanes = 6;
     }
@@ -259,9 +279,14 @@ long save_raw(IFFHandle_t *iff, cop_cfg_t *cfg)
 
     for (h = 0; h < cfg->scr_height; h++) {
         /* save one row of all planes */
-        for (m = 0; m < nbplanes; m++) {
-            if ((n = iff->write(iff,planes[m],bytes_per_row)) < 0) {
-                return n;
+        for (m = 0; m < cfg->num_bpl; m++) {
+            if (!(cfg->flags & MODE_DUALPF) ||
+               (!odd && (m & 1)) ||
+               (odd && (!(m & 1)))) {
+
+                if ((n = iff->write(iff,planes[m],bytes_per_row)) < 0) {
+                    return n;
+                }
             }
             /* go to next lines.. screen width + modulo */
             planes[m] += bytes_per_row;
@@ -279,10 +304,11 @@ long save_raw(IFFHandle_t *iff, cop_cfg_t *cfg)
     return body_size;
 }
 
-long save_pal(IFFHandle_t *iff, cop_cfg_t *cfg)
+long save_pal(IFFHandle_t *iff, cop_cfg_t *cfg, BOOL odd)
 {
     int nbplanes = cfg->num_bpl;
     int ncolors;
+    int off = 0;
 
     if (nbplanes < 6) {
         ncolors = 1 << cfg->num_bpl;
@@ -291,6 +317,16 @@ long save_pal(IFFHandle_t *iff, cop_cfg_t *cfg)
     } else {
         ncolors = 32;
     }
+    if (cfg->flags & MODE_DUALPF && cfg->num_bpl > 1) {
+        nbplanes = (nbplanes & 1) + (nbplanes >> 1);
 
-    return iff->write(iff,cfg->pal,ncolors*2);
+        if (!odd) {
+            nbplanes = cfg->num_bpl - nbplanes;
+            off = 8;
+        }
+
+        ncolors = 1 << nbplanes;
+    }
+
+    return iff->write(iff,&cfg->pal[off],ncolors*2);
 }

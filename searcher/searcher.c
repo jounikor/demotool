@@ -594,7 +594,7 @@ static struct UCopList* setup_copper(struct Screen* p_scr, cop_cfg_t* p_cfg)
 static void update_head_texts(BOOL statics, ULONG texts, cop_cfg_t *p_cfg) 
 {
     int n,x,y,width;
-    char buf[10];
+    char buf[20];
 
     if (statics) {
         SetDrMd(sp_window->RPort,JAM2);
@@ -769,7 +769,7 @@ static void update_head_texts(BOOL statics, ULONG texts, cop_cfg_t *p_cfg)
             Text(sp_window->RPort,s_status_lines[p_cfg->status],13);
         } else {
             sprintf(buf,"IoErr: %6ld",p_cfg->ioerr);
-            Text(sp_window->RPort,s_text_save[p_cfg->ioerr],13);
+            Text(sp_window->RPort,buf,13);
         }
     }
 
@@ -1279,12 +1279,14 @@ static ULONG handle_filename(cop_cfg_t *p_cfg)
 static int handle_filesave(cop_cfg_t *p_cfg, struct Gadget *p_gad)
 {
     IFFHandle_t* fh;
-    int ret;
-    char *name = ((struct StringInfo*)p_gad->SpecialInfo)->Buffer;
+    int ret = -1;
+    char *tmp_name = ((struct StringInfo*)p_gad->SpecialInfo)->Buffer;
+    char *postfix = "";
+    char name[256];
 
     OffGadget(p_gad,sp_window,NULL);
 
-    if (strlen(name) <= 0) {
+    if (strlen(tmp_name) <= 0) {
         p_cfg->ioerr = 0;
         p_cfg->status = IDX_STATUS_NOSAVE;
         update_head_texts(FALSE,TEXT_STATUS,p_cfg);
@@ -1294,27 +1296,28 @@ static int handle_filesave(cop_cfg_t *p_cfg, struct Gadget *p_gad)
     p_cfg->status = IDX_STATUS_SAVEOK;
     p_cfg->ioerr = 0;
 
-    /* Here be:
-     * - prepare file to save
-     * - Open file & save
-     */
-
     if ((fh = initIFFHandle()) == NULL) {
         p_cfg->ioerr = 0;
         p_cfg->status = IDX_STATUS_NORAM;
         update_head_texts(FALSE,TEXT_STATUS,p_cfg);
         return -1;        
     }
+    if (p_cfg->flags & MODE_DUALPF) {
+        postfix = "_pf1";
+    }
+
+    sprintf(name,"%s%s",tmp_name,postfix);
+
     if (fh->open(fh,name,MODE_NEWFILE)) {
         switch (p_cfg->save_as) {
         case IDX_SAVE_IFF:
-            save_iff(fh,p_cfg);
+            ret = save_iff(fh,p_cfg,TRUE);
             break;
         case IDX_SAVE_RAW:
-            save_raw(fh,p_cfg);
+            ret = save_raw(fh,p_cfg,TRUE);
             break;
         case IDX_SAVE_PAL:
-            save_pal(fh,p_cfg);
+            ret = save_pal(fh,p_cfg,TRUE);
             break;
         default:
             p_cfg->status = IDX_STATUS_FAULT;
@@ -1322,6 +1325,42 @@ static int handle_filesave(cop_cfg_t *p_cfg, struct Gadget *p_gad)
         }
 
         fh->close(fh);
+    }
+
+    if (ret < 0) {
+        p_cfg->ioerr = fh->ioerr(fh);
+        freeIFFHandle(fh);
+        update_head_texts(FALSE,TEXT_STATUS,p_cfg);
+        return -1;
+    }
+
+    ret = -1;
+
+    if (p_cfg->flags & MODE_DUALPF) {
+        sprintf(name,"%s_pf2",tmp_name);
+
+        if (fh->open(fh,name,MODE_NEWFILE)) {
+            switch (p_cfg->save_as) {
+            case IDX_SAVE_IFF:
+                ret = save_iff(fh,p_cfg,FALSE);
+                break;
+            case IDX_SAVE_RAW:
+                ret = save_raw(fh,p_cfg,FALSE);
+                break;
+            case IDX_SAVE_PAL:
+                ret = save_pal(fh,p_cfg,FALSE);
+                break;
+            default:
+                p_cfg->status = IDX_STATUS_FAULT;
+                break;
+            }
+
+            if (ret < 0) {
+                p_cfg->ioerr = fh->ioerr(fh);
+            }
+
+            fh->close(fh);
+        }
     }
 
     freeIFFHandle(fh);

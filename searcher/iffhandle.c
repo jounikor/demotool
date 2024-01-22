@@ -156,8 +156,6 @@ static int32_t s_close(IFFHandle_t *ctx)
 
     Close(p->handle);
     p->handle = 0;
-    p->last_ioerr = 0;
-    
     return 0;
 }
 

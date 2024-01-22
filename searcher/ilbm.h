@@ -96,8 +96,8 @@ typedef struct {
 
 /* ilbmw.c  ILBM writer routines.. no compression.. just the simplest */
 
-long save_iff(IFFHandle_t *iff, cop_cfg_t *cfg);
-long save_raw(IFFHandle_t *iff, cop_cfg_t *cfg);
-long save_pal(IFFHandle_t *iff, cop_cfg_t *cfg);
+long save_iff(IFFHandle_t *iff, cop_cfg_t *cfg, BOOL odd);
+long save_raw(IFFHandle_t *iff, cop_cfg_t *cfg, BOOL odd);
+long save_pal(IFFHandle_t *iff, cop_cfg_t *cfg, BOOL odd);
 
 #endif /* IFFP_ILBM_H */

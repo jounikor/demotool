@@ -34,7 +34,7 @@ all:
 	$(MAKE) -i -C plugins all
 	$(MAKE) -i -C server all
 	$(MAKE) -i -C client all OS=$(OS)
-	$(MAKE) -i -C searcher all OS=$(OS)
+	$(MAKE) -i -C searcher all
 
 pl:
 	$(MAKE) -i -C plugins all
