@@ -50,6 +50,7 @@
 typedef struct {
     UWORD pal[32+3];
     LONG bpl_ptr[6];
+    LONG pal_ptr;
     LONG max_chipmem;
     WORD mod_even;      // in bytes
     WORD mod_odd;       // in bytes
@@ -169,10 +170,13 @@ typedef struct {
 #define KEY_BSLASH  0x0d
 #define KEY_BSPACE  0x41
 #define KEY_P       0x19
-#define KEY_C       0x33
 #define KEY_D       0x22
 #define KEY_H       0x25
 #define KEY_L       0x28
+#define KEY_X       0x32
+#define KEY_C       0x33
+#define KEY_V       0x34
+#define KEY_B       0x35
 #define KEY_N       0x36
 #define KEY_M       0x37
 #define KEY_COMMA   0x38
@@ -241,7 +245,7 @@ SCREEN WIDTH  0000  RGB  #00 $000  BIT PLANES  4 HIRES
 PFIELD1 WIDTH 0000  MOD EVEN 0000  0 ON  * $100000 PF1
 PFIELD2 WIDTH 0000  MOD ODD  0000  1 ON  - $100000 PF2
 BPLANE HEIGHT 0000  DISPLAY   DPF  2 ON  * $100000 PF1
-ADDRESS    $000000  PRIORITY  PF1  3 ON  * $100000 PF2
+PALETTE    $000000  PRIORITY  PF1  3 ON  * $100000 PF2
                     SAVE AS   IFF  4 OFF - $100000 PF1
                     status line..  5 OFF - $100000 PF2
 

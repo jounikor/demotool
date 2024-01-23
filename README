@@ -47,6 +47,15 @@ Currently implemented:
     (multitasks) and especially uses IDCMP for keyboard input.
   - Only for OCS/ECS and uses native screen modes.
 
+* Demo startup
+  - A highly configurable startup code for hardware banging demos (or
+    alike). Used to take over and restrore the OS (including RTG systems)
+    as cleanly as possible.. 100% PC relative if needed.
+  - Includes an optional TRACE macro that can be used to output
+    RawDoFmt() formatted strings to serial at speeds of 9600, 115200,
+    or 230400 bps. You need to have Execbase functional when using
+    the tracing.
+
 * About plugin implementations:
   If you do not want to change the client code then design your plugins
   to work with generic plugin commands 'recv' and 'send'. In this case

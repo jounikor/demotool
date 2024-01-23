@@ -70,11 +70,9 @@ static const char s_ver[] = "$VER: Graphics Searcher v"MSTR(MAJOR)"."MSTR(MINOR)
  */
 
 extern struct Custom custom;
-
 struct IntuitionBase *IntuitionBase;
 struct GfxBase *GfxBase;
 struct DosLibrary *DOSBase;
-
 struct TextFont *sp_font;
 
 static struct TextAttr s_topaz = {
@@ -132,11 +130,11 @@ static UWORD s_def_pal[] = {
 
 
 /* text area 1 */
-static STRPTR s_text_area1[] = {"SCREEN WIDTH  0000",
-                                "PFIELD1 WIDTH 0000",
-                                "PFIELD2 WIDTH 0000",
-                                "BPLANE HEIGHT 0000",
-                                "ADDRESS    $000000"};
+static STRPTR s_text_area1[] = {"SCREEN WIDTH      ",
+                                "PFIELD1 WIDTH     ",
+                                "PFIELD2 WIDTH     ",
+                                "BPLANE HEIGHT     ",
+                                "PALETTE    $      "};
 
 /* text area 2 */
 static STRPTR s_text_area2[] = {"RGB  #   $   ",
@@ -294,19 +292,25 @@ ULONG __chip sprites[7][57] = {
     }
 };
 
-static const struct ExtNewScreen s_newscreen = {
+
+static struct TagItem s_screen_tags[] = {
+    {SA_Draggable,FALSE},
+    {TAG_DONE,0}
+};
+
+
+static struct ExtNewScreen s_newscreen = {
     0,0,                                        /* LeftEdge, TopEdge */
     640,64,2,                                   /* Width, Height, Depth */
     0,1,                                        /* DetailPen, BlockPen */
     HIRES|SPRITES,                              /* ViewModes */
-    CUSTOMSCREEN,                               /* Type */
-    &s_topaz,                                   /* *Font */
+    CUSTOMSCREEN|SCREENQUIET,                   /* Type */
+    &s_topaz,                                   /* Font */
     NULL,
     NULL,                                       /* *Gadgets */
     NULL,                                       /* *CustomBitmap */
-    NULL                                        /* *Extension */
+    s_screen_tags                               /* *Extension */
 };
-
 
 
 static const struct ExtNewWindow s_newwindow = {
@@ -359,11 +363,19 @@ static ULONG handle_priority(cop_cfg_t *p_cfg);
 static ULONG handle_filename(cop_cfg_t *p_cfg);
 static int handle_filesave(cop_cfg_t *p_cfg, struct Gadget *p_gad);
 static BOOL main_key_loop(int key, int qual, cop_cfg_t *p_cfg);
+static ULONG handle_palette_move(cop_cfg_t *p_cfg, int step);
+static ULONG search_copper(cop_cfg_t *p_cfg);
+
 
 /* Spaghetti code starts.. there are hardly comments.. */
 
 static BOOL open_screen_window(void)
 {
+    /* check for V39.. patch then tag extension */
+    if (SysBase->LibNode.lib_Version >= 39) {
+        s_newscreen.Type |= NS_EXTENDED;
+    }
+
     sp_screen = OpenScreen((const struct NewScreen *)&s_newscreen);
 
     if (sp_screen == NULL) {
@@ -576,17 +588,6 @@ static struct UCopList* setup_copper(struct Screen* p_scr, cop_cfg_t* p_cfg)
     RethinkDisplay();
     Permit();
 
-#if 0
-    /* dump */
-    ULONG *p_d = ((ULONG*)0x180000);
-    ULONG *p_s = (ULONG*)GfxBase->LOFlist;
-
-    do {
-        *p_d++ = *p_s;
-    } while (*p_s++ != 0xfffffffe);
-
-#endif
-
     return p_ucl;
 }
 
@@ -651,7 +652,7 @@ static void update_head_texts(BOOL statics, ULONG texts, cop_cfg_t *p_cfg)
 
     /* Area 1 */
     if (texts & TEXT_SCREEN) {
-        sprintf(buf,"%04d",p_cfg->scr_width);
+        sprintf(buf,"%4d",p_cfg->scr_width);
         Move(sp_window->RPort,TEXT_AREA1_X+14*8,TEXT_AREA1_Y+0*8);
         Text(sp_window->RPort,buf,4);
     }
@@ -661,7 +662,7 @@ static void update_head_texts(BOOL statics, ULONG texts, cop_cfg_t *p_cfg)
             width = p_cfg->scr_width;
         }
 
-        sprintf(buf,"%04d",width);
+        sprintf(buf,"%4d",width);
         Move(sp_window->RPort,TEXT_AREA1_X+14*8,TEXT_AREA1_Y+1*8);
         Text(sp_window->RPort,buf,4);
     }
@@ -671,14 +672,19 @@ static void update_head_texts(BOOL statics, ULONG texts, cop_cfg_t *p_cfg)
             width = p_cfg->scr_width;
         }
 
-        sprintf(buf,"%04d",width);
+        sprintf(buf,"%4d",width);
         Move(sp_window->RPort,TEXT_AREA1_X+14*8,TEXT_AREA1_Y+2*8);
         Text(sp_window->RPort,buf,4);
     }
     if (texts & TEXT_HEIGHT) {
-        sprintf(buf,"%04d",p_cfg->scr_height);
+        sprintf(buf,"%4d",p_cfg->scr_height);
         Move(sp_window->RPort,TEXT_AREA1_X+14*8,TEXT_AREA1_Y+3*8);
         Text(sp_window->RPort,buf,4);
+    }
+    if (texts & TEXT_ADDRESS) {
+        sprintf(buf,"%06lx",p_cfg->pal_ptr);
+        Move(sp_window->RPort,TEXT_AREA1_X+12*8,TEXT_AREA1_Y+4*8);
+        Text(sp_window->RPort,buf,6);
     }
 
     /* Area 2 */
@@ -807,12 +813,14 @@ static ULONG init_cop_cfg(cop_cfg_t *p_cfg, BOOL pal_only)
 {
     int n;
 
+    p_cfg->pal_ptr = 0;
+
     for (n = 0; n < 32+3; n++) {
         p_cfg->pal[n] = s_def_pal[n];
     }
 
     if (pal_only) {
-        return RGB_CHANGE;
+        return RGB_CHANGE|TEXT_ADDRESS;
     }
 
     for (n = 0; n < 6; n++) {
@@ -1369,6 +1377,33 @@ static int handle_filesave(cop_cfg_t *p_cfg, struct Gadget *p_gad)
 }
 
 
+static ULONG handle_palette_move(cop_cfg_t *p_cfg, int step)
+{
+    UWORD tmp;
+    int n;
+
+    LONG   pp = p_cfg->pal_ptr;
+    LONG mask = p_cfg->max_chipmem - 1;
+
+    pp = (pp + step) & mask;
+    p_cfg->pal_ptr = pp;
+
+    for (n = 0; n < 32; n++) {
+        p_cfg->pal[n] = *((UWORD*)pp);
+        pp = (pp + 2) & mask;
+    }
+
+    return RGB_CHANGE|TEXT_ADDRESS;
+}
+
+
+static ULONG search_copper(cop_cfg_t *p_cfg)
+{
+
+    return handle_palette_move(p_cfg,0);
+}
+
+
 static BOOL main_key_loop(int key, int qual, cop_cfg_t *p_cfg)
 {
     static BOOL onoff = TRUE;
@@ -1445,8 +1480,18 @@ static BOOL main_key_loop(int key, int qual, cop_cfg_t *p_cfg)
         update = init_cop_cfg(p_cfg,TRUE);
         break;
 
+    case KEY_X:
+        break;
     case KEY_C:
         break;
+
+    case KEY_V:
+        update = handle_palette_move(p_cfg,-2);
+        break;
+    case KEY_B:
+        update = handle_palette_move(p_cfg,2);
+        break;
+
 
     case KEY_UP:
     case KEY_DOWN:
