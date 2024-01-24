@@ -40,17 +40,23 @@ OVERVIEW ON THE KEYS:
         [:        DECREASE DDFSTOP
         ]:        INCREASE DDFSTOP
 
-        X:        SEARCH COPPERLIST (WITH BITPLANES NUMBER)
-        C:        SEARCH COLORTABLE (WITH BITPLANES NUMBER)
+        X:        SEARCH COPPERLIST PALETTE
+                    - MINUMUM 4 COLOR ENTRIES MUST BE FOUND
+                    - STEP FORWARD 2 BYTES EACH SEARCH
+        LSHIFT+X: SAME AS X BUT FOWARD 64 BYTES
+        C:        SEARCH COPPERLIST PALETTE
+                    - MINUMUM 8 COLOR ENTRIES MUST BE FOUND
+                    - STEP FORWARD 2 BYTES EACH SEARCH
+        LSHIFT+C: SAME AS C BUT FORWARD 64 BYTES 
 
         V:        MOVE IN COLORTABLE
         B:        MOVE IN COLORTABLE
 
-        N:          DECREASE PF1 & PF2 MODULOS (10)
-        M:          INCREASE PF1 & PF2 MODULOS (10)
-        ,:          DECREASE PF1 & PF2 MODULOS (2)
-        .:          INCREASE PF1 & PF2 MODULOS (2)
-        /:          PF1 & PF2 MODULOS TO 0
+        N:        DECREASE PF1 & PF2 MODULOS (10)
+        M:        INCREASE PF1 & PF2 MODULOS (10)
+        ,:        DECREASE PF1 & PF2 MODULOS (2)
+        .:        INCREASE PF1 & PF2 MODULOS (2)
+        /:        PF1 & PF2 MODULOS TO 0
 
         LSHIFT+M:   INCREASE PF1 MODULO (10)
         RSHIFT+N:   DECREASE PF2 MODULO (10)

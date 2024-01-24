@@ -59,6 +59,7 @@
 
 #include "searcher.h"
 #include "ilbm.h"
+#include "colfind.h"
 
 static const char s_ver[] = "$VER: Graphics Searcher v"MSTR(MAJOR)"."MSTR(MINOR)" (21.1.2024) by Jouni 'Mr.Spiv/Scoopex' Korhonen";
 
@@ -171,7 +172,7 @@ static STRPTR s_status_lines[] = {"Searcher v"MSTR(MAJOR)"."MSTR(MINOR),
                                   "Out of memory",
                                   "Internal fail",
                                   "File exists..",
-                                  "No DPF saving"};
+                                  "Nothing found"};
 
 #define TEXT_VER_LEN 4
 static STRPTR s_text_scx = "ScoopeX";
@@ -363,8 +364,8 @@ static ULONG handle_priority(cop_cfg_t *p_cfg);
 static ULONG handle_filename(cop_cfg_t *p_cfg);
 static int handle_filesave(cop_cfg_t *p_cfg, struct Gadget *p_gad);
 static BOOL main_key_loop(int key, int qual, cop_cfg_t *p_cfg);
-static ULONG handle_palette_move(cop_cfg_t *p_cfg, int step);
-static ULONG search_copper(cop_cfg_t *p_cfg);
+static ULONG handle_palette_move(cop_cfg_t *p_cfg, int qual, int step);
+static ULONG handle_copper_search(cop_cfg_t *p_cfg, int qual, int min_num);
 
 
 /* Spaghetti code starts.. there are hardly comments.. */
@@ -1377,30 +1378,36 @@ static int handle_filesave(cop_cfg_t *p_cfg, struct Gadget *p_gad)
 }
 
 
-static ULONG handle_palette_move(cop_cfg_t *p_cfg, int step)
+static ULONG handle_palette_move(cop_cfg_t *p_cfg, int qual, int step)
 {
     UWORD tmp;
     int n;
 
     LONG   pp = p_cfg->pal_ptr;
     LONG mask = p_cfg->max_chipmem - 1;
+    LONG shft = 0;
+
+    if (qual & IEQUALIFIER_LSHIFT) {
+        step *= 2;
+        shft = 2;
+    }
 
     pp = (pp + step) & mask;
     p_cfg->pal_ptr = pp;
+    step = ABS(step);
 
     for (n = 0; n < 32; n++) {
-        p_cfg->pal[n] = *((UWORD*)pp);
-        pp = (pp + 2) & mask;
+        p_cfg->pal[n] = *((UWORD*)((pp + shft) & mask));
+        pp = (pp + step) & mask;
     }
 
     return RGB_CHANGE|TEXT_ADDRESS;
 }
 
 
-static ULONG search_copper(cop_cfg_t *p_cfg)
+static ULONG handle_copper_search(cop_cfg_t *p_cfg, int qual, int min_num)
 {
-
-    return handle_palette_move(p_cfg,0);
+    return copper_search(p_cfg,qual,min_num);
 }
 
 
@@ -1481,15 +1488,17 @@ static BOOL main_key_loop(int key, int qual, cop_cfg_t *p_cfg)
         break;
 
     case KEY_X:
+        update = handle_copper_search(p_cfg,qual,4);
         break;
     case KEY_C:
+        update = handle_copper_search(p_cfg,qual,8);
         break;
 
     case KEY_V:
-        update = handle_palette_move(p_cfg,-2);
+        update = handle_palette_move(p_cfg,qual,-2);
         break;
     case KEY_B:
-        update = handle_palette_move(p_cfg,2);
+        update = handle_palette_move(p_cfg,qual,2);
         break;
 
 

@@ -138,7 +138,7 @@ typedef struct {
 #define IDX_STATUS_NORAM    5
 #define IDX_STATUS_FAULT    6
 #define IDX_STATUS_EXISTS   7
-#define IDX_STATUS_DUALPF   8
+#define IDX_STATUS_NOTFOUND 8
 #define IDX_STATUS_MAX      8
 
 
