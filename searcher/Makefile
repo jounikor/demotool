@@ -32,9 +32,9 @@ endif
 DATE := $(shell date)
 DIST := $(subst :,-,$(DATE))
 
-SRCS :=	searcher.c iffhandle.c ilbmw.c colfind.c
-OBJS := searcher.o iffhandle.o ilbmw.o colfind.o
-INCS := searcher.h iffhandle.h ilbm.h colfind.h
+SRCS :=	searcher.c iffhandle.c ilbmw.c colfind.c screen.c
+OBJS := searcher.o iffhandle.o ilbmw.o colfind.o screen.o
+INCS := searcher.h iffhandle.h ilbm.h colfind.h screen.h
 
 PROG := gs.exe
 

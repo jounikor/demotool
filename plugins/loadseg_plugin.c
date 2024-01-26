@@ -202,6 +202,8 @@ __saveds static  LONG local_run(__reg("a0") void* ctx)
 
     if (start) {
         __asm("\tmovem.l d2-d7/a2-a6,-(sp)\n");
+        __asm("\tmoveq #0,d0\n");
+        __asm("\tmove.l d0,a0\n");
         (*start)();
         __asm("\tmovem.l (sp)+,d2-d7/a2-a6\n");
     }

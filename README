@@ -45,7 +45,8 @@ Currently implemented:
   - This is a tribute (and a reimplementation) of the classic "Graphic
     Searcher" originally by Terminators. A bit more system friendly
     (multitasks) and especially uses IDCMP for keyboard input.
-  - Only for OCS/ECS and uses native screen modes.
+  - Only for OCS/ECS and uses native screen modes. 
+  - Kick 1.3 or better required.
 
 * Demo startup
   - A highly configurable startup code for hardware banging demos (or
