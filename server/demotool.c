@@ -2,8 +2,8 @@
  * @file demotool.c
  * @brief A server side of the Amige remote code execution tool.
  * @author Jouni 'Mr.Spiv' Korhonen
- * @version 0.1
- * @date 2023
+ * @version 0.3
+ * @date 2023-4
  * @note Programmed on A3000/040 and VBCC..
  * @licence
  * @copyright Unlicense
@@ -78,15 +78,15 @@ void _chkabort(void)
  * typedef LONG (*send_cb)(__reg("a0") APTR, __reg("d0") LONG, __reg("a1") void*);
  */
 
-static LONG recv_callback(__reg("a0") APTR p_buf, __reg("d0") LONG len, __reg("a1") void* CONFIG)
+static long recv_safe(CONFIG_PTR, void *b, long len, long flags)
 {
-    LONG tot = 0;
-    LONG res;
-    uint8_t *buf = p_buf;
+    long tot = 0;
+    long res;
+    uint8_t *buf = b;
 
     while (tot < len) {
-        res = recv(CONFIG_PTR_GET->active_socket,buf+tot,len-tot,0);
-    
+        res = recv(CONFIG_PTR_GET->active_socket,buf+tot,len-tot,flags);
+
         if (res < 0) {
             if (errno != EAGAIN) {
                 tot = res;
@@ -100,14 +100,14 @@ static LONG recv_callback(__reg("a0") APTR p_buf, __reg("d0") LONG len, __reg("a
     return tot;
 }
 
-static LONG send_callback(__reg("a0") APTR p_buf, __reg("d0") LONG len, __reg("a1") void* CONFIG)
+static long send_safe(CONFIG_PTR, void *b, long len, long flags)
 {
-    LONG tot = 0;
-    LONG res;
-    uint8_t *buf = p_buf;
+    long tot = 0;
+    long res;
+    uint8_t *buf = b;
 
     do {
-        res = send(CONFIG_PTR_GET->active_socket,buf+tot,len-tot,0);
+        res = send(CONFIG_PTR_GET->active_socket,buf+tot,len-tot,flags);
 
         if (res < 0) {
             if (errno != EAGAIN) {
@@ -120,6 +120,17 @@ static LONG send_callback(__reg("a0") APTR p_buf, __reg("d0") LONG len, __reg("a
     } while (tot < len);
 
     return tot;
+}
+
+
+static LONG recv_callback(__reg("a0") APTR p_buf, __reg("d0") LONG len, __reg("a1") void* CONFIG)
+{
+    return recv(CONFIG_PTR_GET->active_socket,p_buf,len,0);
+}
+
+static LONG send_callback(__reg("a0") APTR p_buf, __reg("d0") LONG len, __reg("a1") void* CONFIG)
+{
+    return send_safe(CONFIG_PTR_GET,p_buf,len,0);
 }
 
 static uint32_t check_dt_ver_len(char* p_hdr, int* p_len, int* p_ver)
@@ -185,12 +196,12 @@ static long init_with_open(CONFIG_PTR)
 
 static int send_response(CONFIG_PTR, ULONG resp)
 {
-    return send(CONFIG_PTR_GET->active_socket, &htonl(resp), 4, 0);
+    return send_safe(CONFIG_PTR_GET, &htonl(resp), 4, 0);
 }
 
 static int recv_data(CONFIG_PTR, void *data, int len)
 {
-    return recv(CONFIG_PTR_GET->active_socket, data, len, 0);
+    return recv_safe(CONFIG_PTR_GET, data, len, 0);
 }
 
 static int close_connection(CONFIG_PTR)
@@ -322,10 +333,10 @@ static int loader_main(CONFIG_PTR, struct plugin_header* list)
             Printf("Header has extensions:\n");
             while (n < (hdr_len - sizeof(dt_header_t) + 4)) {
                 m = p_hdr->extension[n] & 0x0f;
-                Printf("  Type %ld, len %ld: ",(ULONG)(p_hdr->extension[n++] & 0xf0),m);
+                Printf("  Type %2ld, len %2ld: ",(ULONG)(p_hdr->extension[n++] & 0xf0),m);
 
                 while (m-- > 0) {
-                    Printf("%ld ",(ULONG)p_hdr->extension[n++]);
+                    Printf("%02lx ",(ULONG)p_hdr->extension[n++]);
                 }
                 Printf("\n");
             }

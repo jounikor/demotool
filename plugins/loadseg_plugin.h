@@ -38,7 +38,7 @@
 #include "protocol.h"
 
 #define LOADSEG_PLUGIN_MAJOR	0
-#define LOADSEG_PLUGIN_MINOR	2
+#define LOADSEG_PLUGIN_MINOR	4
 #define LOADSEG_PLUGIN_ID		0x6C736730	/* "LSG0" */
 #define LOADSEG_RESERVED 		0
 
@@ -51,6 +51,7 @@ typedef struct context {
 	void *user;
 	BPTR program;
 	char filename[LOADSEG_FILENAME_LEN];
+    char cmdline[DT_EXT_CMDLINE_LEN];
 } context_t;
 
 #endif 	/* _LOADSEG_PLUGIN_H_INCLUDED */

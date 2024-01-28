@@ -258,13 +258,17 @@ static dt_header_t* prepare_header(dt_options_t* p_opt, int* final_len)
     dt_header_t* p_hdr;
     int header_len = sizeof(dt_header_t);
     int extension_len = 0;
-    int n;
+    int n,m;
 
     /* check for extensions */
     if (p_opt->flags & DT_FLG_EXTENSION) {
         if (p_opt->device) {
-            /* Currently we only understand device name */
             extension_len += strlen(p_opt->device);
+            ++extension_len;    /* tag */
+        }
+        if (p_opt->cmdline) {
+            extension_len += strlen(p_opt->cmdline);
+            extension_len += strlen(p_opt->cmdline) > 15 ? 2 : 1; /* 1 or 2 tags */
         }
     }
     if (header_len + extension_len - 4 > 256) {
@@ -303,20 +307,33 @@ static dt_header_t* prepare_header(dt_options_t* p_opt, int* final_len)
 
     /* Add extensions */
     n = 0;
+    m = 0;
 
     if (p_opt->flags & DT_FLG_EXTENSION) {
         if (p_opt->device) {
             n += add_extension(DT_EXT_DEVICE_NAME, &p_hdr->extension[n],
                 p_opt->device, strlen(p_opt->device));
         }
-    
+        if (p_opt->cmdline) {
+            if (strlen(p_opt->cmdline) > 15) {
+                char tmp[16];
+                strncpy(tmp,p_opt->cmdline,15);
+                tmp[15] = '\0';
+                n += add_extension(DT_EXT_COMMAND_LINE1, &p_hdr->extension[n],
+                    tmp, 15);
+                m = 15;
+            }
+            n += add_extension(DT_EXT_COMMAND_LINE0, &p_hdr->extension[n],
+                p_opt->cmdline+m, strlen(p_opt->cmdline+m));
+        }
+
         /* round up to next 4 bytes */
         while (n & 3) {
             /* add 0 length padding bytes.. could use length too */
             n += add_extension(DT_EXT_PADDING, &p_hdr->extension[n], NULL, 0);
         }
     }
-    
+
     header_len += n;
     *final_len = header_len;
     return p_hdr;
@@ -572,6 +589,7 @@ static plugin_t validate_command(const dt_options_t *p_opts)
 static const struct option long_options[] = {
     {"version", required_argument,  0, 'v' },
     {"file",    required_argument,  0, 'f' },
+    {"cmd",     required_argument,  0, 'c' },
     {"load",    required_argument,  0, 'l' },
     {"jump",    required_argument,  0, 'j' },
     {"size",    required_argument,  0, 's' },
@@ -606,6 +624,8 @@ static void usage(char** argv)
             "  --version,-v x.y   Minimum or exact plugin version, e.g. '1.2'.\n"
             "  --file,-f file     File to send to a remote Amiga or to save to\n"
             "                     from a remote Amiga.\n"
+            "  --cmd,-c           Command line parameters for 'lsg0' plugin.\n"
+            "                     Note, only 30 characters can be sent over.\n"
             "  --load,-l addr     Address to load 'file' into or address\n"
             "                     to read data from. Enter in hex. Some\n"
             "                     plugins can ignore this option.\n"
@@ -650,6 +670,7 @@ int main(int argc, char** argv)
     s_opts.major = 0;
     s_opts.minor = 0;
     s_opts.file = NULL;
+    s_opts.cmdline = NULL;
     s_opts.named_plugin = NULL;
 
     /* check for options for plugins */
@@ -681,6 +702,13 @@ int main(int argc, char** argv)
             break;
         case 'f':   // --file,-f
             s_opts.file = optarg;
+            break;
+        case 'c':   // --cmd,-c
+            if (strlen(optarg) > 30) {
+                usage(argv);
+            }
+            s_opts.flags |= DT_FLG_EXTENSION;
+            s_opts.cmdline = optarg;
             break;
         case 'l':   // --load,-l
             s_opts.addr = strtoul(optarg,NULL,0);

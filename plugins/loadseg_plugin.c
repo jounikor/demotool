@@ -1,5 +1,5 @@
 /*
- * v0.1 (c) 2023 Jouni 'Mr.Spiv' Korhonen
+ * v0.4 (c) 2023 Jouni 'Mr.Spiv' Korhonen
  * 
  * =======================================================================
  *
@@ -37,6 +37,7 @@
 #define __NOLIBBASE__
 #include <proto/dos.h>
 #include <proto/exec.h>
+#include <dos/dos.h>
 
 #include "loadseg_plugin.h"
 #include "utils.h"
@@ -59,7 +60,7 @@ const struct plugin_common plugin_info = {
     LOADSEG_PLUGIN_MAJOR,
     LOADSEG_PLUGIN_MINOR,
     LOADSEG_RESERVED,
-    "$VER: loadseg_plugin "MSTR(LOADSEG_PLUGIN_MAJOR)"."MSTR(LOADSEG_PLUGIN_MINOR)" (23.9.2023) by Jouni 'Mr.Spiv' Korhonen",
+    "$VER: loadseg_plugin "MSTR(LOADSEG_PLUGIN_MAJOR)"."MSTR(LOADSEG_PLUGIN_MINOR)" (27.1.2024) by Jouni 'Mr.Spiv' Korhonen",
     "OTN Loadseg() plugin",
 
     local_init,
@@ -83,6 +84,8 @@ __saveds static void* local_init(__reg("a0") recv_cb r, __reg("a1") send_cb s, _
             p_ctx->user = p;
             p_ctx->program = 0;
             p_ctx->filename[0] = '\0';
+            p_ctx->cmdline[0] = '\n';
+            p_ctx->cmdline[1] = '\0';
             return p_ctx;
         }
         g_errno = DT_ERR_MALLOC;
@@ -119,11 +122,14 @@ __saveds static LONG local_exec(__reg("a0") void* ctx)
 {
     context_t *p_ctx = ctx;
     uint32_t ret;
-    int n;
+    int n, m, o;
     BPTR fh;
     LONG len, cnt;
     char a_prefix[15 + 1 +1];   /* max extension is 15 */
     bool override_dev = false;
+
+    m = 0;
+    o = 0;
 
     if (p_ctx->p_hdr->flags & DT_FLG_EXTENSION) {
         /* calculate the max size of the extension.. assume
@@ -136,6 +142,25 @@ __saveds static LONG local_exec(__reg("a0") void* ctx)
             ext_len, DT_EXT_DEVICE_NAME, a_prefix)) >= 0) { 
             a_prefix[n] = '\0';
             override_dev = true;
+        }
+        if (n < 0) {
+            n = 0;
+        } else {
+            m += n;
+        }
+        if ((n = find_extension(&p_ctx->p_hdr->extension[m],
+            ext_len, DT_EXT_CMDLINE1, p_ctx->cmdline)) >= 0) { 
+        }
+        if (n < 0) {
+            n = 0;
+        } else {
+            m += n;
+            o = n;
+        }
+        if ((n = find_extension(&p_ctx->p_hdr->extension[m],
+            ext_len, DT_EXT_CMDLINE0, &p_ctx->cmdline[o])) >= 0) { 
+            p_ctx->cmdline[o+n] = '\n';
+            p_ctx->cmdline[o+n+1] = '\0';
         }
     }
 
@@ -156,10 +181,12 @@ __saveds static LONG local_exec(__reg("a0") void* ctx)
 
     cnt = 0;
     ret = DT_ERR_OK;
+    n = p_ctx->p_hdr->size;
 
     /* read from socket and write to a file */
-    while (cnt < p_ctx->p_hdr->size) {
-        len = p_ctx->recv(s_tmp_buf, TMP_BUF_LEN,p_ctx->user);
+    while (cnt < n) {
+        m = n - cnt >= TMP_BUF_LEN ? TMP_BUF_LEN : n - cnt;
+        len = p_ctx->recv(s_tmp_buf,m,p_ctx->user);
 
         if (len < 0) {
             ret = DT_ERR_RECV;
@@ -199,12 +226,26 @@ __saveds static  LONG local_run(__reg("a0") void* ctx)
     context_t *p_ctx = ctx;
     typedef  void (*func)(void);
     func start = (func)BADDR(p_ctx->program);
+    struct CommandLineInterface *p_cli;
 
+    if ((p_cli = Cli()) == NULL) {
+        return DT_ERR_RUN;
+    }
+
+    /* For now there is no support for command line paramener
+     * passing to the loaded executable. The extensions would
+     * allow just 15 characters long command line anyway.
+     */
     if (start) {
+        Printf("**cmdline = %s\n",p_ctx->cmdline);
+
         __asm("\tmovem.l d2-d7/a2-a6,-(sp)\n");
-        __asm("\tmoveq #0,d0\n");
-        __asm("\tmove.l d0,a0\n");
-        (*start)();
+        /* replace this mess with RunCommand() */
+        SetProgramName(p_ctx->filename);
+        RunCommand( p_ctx->program,
+                    p_cli->cli_DefaultStack*4,
+                    p_ctx->cmdline,
+                    strlen(p_ctx->cmdline));
         __asm("\tmovem.l (sp)+,d2-d7/a2-a6\n");
     }
 

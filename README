@@ -31,9 +31,12 @@ Currently implemented:
       name to be used with '--plugin' option.
 
 * server
-  - Compiles on Amiga (kick 2.x required)
+  - Kick 2.x required.
+  - Dummy server that just does parsing, socket calls and lets plugins to do
+    the execution logic & heavy lifting.
 
 * plugins
+  - Kick 2.x required.
   - Loadseg() executable launcher. 
   - Absolute address launcher. This plugin can be used to load
     arbitrary data into server Amiga RAM.
@@ -42,11 +45,11 @@ Currently implemented:
     client side file.
 
 * Graphics Searcher
+  - Kick 1.3 or better required.
   - This is a tribute (and a reimplementation) of the classic "Graphic
     Searcher" originally by Terminators. A bit more system friendly
     (multitasks) and especially uses IDCMP for keyboard input.
   - Only for OCS/ECS and uses native screen modes. 
-  - Kick 1.3 or better required.
 
 * Demo startup
   - A highly configurable startup code for hardware banging demos (or
@@ -74,9 +77,10 @@ Currently implemented:
   - Bifat for inspiring (without his knowledge :) me to complete this
     so long time stalled project.
   - Frank Wille for helping a bit with vbcc and vlink foo.
+  - Jope helping with testing.
 
 Work in Progress:
 * Generic cleanup of the code. It is rather messy in places.
-
+* More testing..
 
 

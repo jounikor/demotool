@@ -44,6 +44,7 @@ typedef struct dt_options {
     char* plugin;
     char* named_plugin;
     char* file;
+    char* cmdline;
     uint32_t major;
     uint32_t minor;
     SOCK_T sock;

@@ -168,6 +168,12 @@ typedef struct dt_header {
 /* extentions Types */
 #define DT_EXT_PADDING          0x00        /**< 1 byte padding */
 #define DT_EXT_DEVICE_NAME      0x10        /**< device name such */
+#define DT_EXT_CMDLINE0         0x20        /**< command line to pass.. 15 chars */
+#define DT_EXT_CMDLINE1         0x30        /**< additional 15 chars.. placed before DT_EXT_COMMAND_LINE0 */
+#define DT_EXT_STACK            0x40        /**< define stack size for loaded program */
+
+#define DT_EXT_CMDLINE_LEN      32          /**< 30 chars + 2 byte termination */
+
 
 /* other extension related */
 #define DT_EXT_MAX_LEN          15          /**< Max extension length. Strings do
@@ -185,11 +191,13 @@ typedef struct dt_header {
 #define DT_ERR_TAG_LEN_VER      1008    /* header was dud */
 #define DT_ERR_NO_PLUGIN        1009
 #define DT_ERR_EXEC             1010    /* executing the remote content failed */
+#define DT_ERR_RUN              1011    /* running the remote content failed */
 
-#define DT_ERR_HDR_TAG          1011
-#define DT_ERR_HDR_VERSION      1012
-#define DT_ERR_HDR_LEN          1013    /* header is too short */
-#define DT_ERR_HDR_INVALID      1014    /* invalid parameters */
+#define DT_ERR_HDR_TAG          1020
+#define DT_ERR_HDR_VERSION      1021
+#define DT_ERR_HDR_LEN          1022    /* header is too short */
+#define DT_ERR_HDR_INVALID      1023    /* invalid parameters */
+
 
 #define DT_ERR_SOCKET_OPEN      2000
 #define DT_ERR_RECV             2001
