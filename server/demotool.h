@@ -50,7 +50,7 @@
 
 #define RDAT_DEFAULT_PORT	9999
 #define RDAT_DEFAULT_ADDR	"0.0.0.0"
-#define RDAT_DEFAULT_PATH	"plugins"
+#define RDAT_DEFAULT_PATH	"PROGDIR:plugins"
 #define RDAT_DEFAULT_DEVICE	"df0"
 #define RDAT_DEFAULT_DELAY	2
 

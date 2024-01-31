@@ -63,7 +63,7 @@
  */
 
 LONG debug = 0;
-static LONG rdat_array[RDAT_ARRAY_SIZE] = {0};
+LONG rdat_array[RDAT_ARRAY_SIZE] = {0};
 
 /* Disable fancy CTRL-C handling */
 void _chkabort(void)
@@ -524,7 +524,7 @@ int main(void)
     }
 
     if (rdat_array[RDAT_PLUGINS]) {
-        plugin_path = (char*)rdat_array[RDAT_PLUGINS];
+        plugin_path = (char*)(rdat_array[RDAT_PLUGINS]);
     }
     if (rdat_array[RDAT_PORT]) {
         cfg.port =  htons(*(LONG *)rdat_array[RDAT_PORT]);
@@ -542,8 +542,6 @@ int main(void)
     debug = rdat_array[RDAT_DEBUG];
     prune = rdat_array[RDAT_PRUNE];
 
-    FreeArgs(p_args);
-
     /* Seacrh for plugins */
 
     if (debug) {
@@ -551,6 +549,7 @@ int main(void)
     }
 
     num_plugins = load_plugins(plugin_path,&plugin_list);
+    FreeArgs(p_args);
 
     if (num_plugins <= 0) {
         Printf("**Error: loading plugins failed or no plugins found.\n");

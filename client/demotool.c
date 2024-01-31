@@ -319,11 +319,11 @@ static dt_header_t* prepare_header(dt_options_t* p_opt, int* final_len)
                 char tmp[16];
                 strncpy(tmp,p_opt->cmdline,15);
                 tmp[15] = '\0';
-                n += add_extension(DT_EXT_COMMAND_LINE1, &p_hdr->extension[n],
+                n += add_extension(DT_EXT_CMDLINE1, &p_hdr->extension[n],
                     tmp, 15);
                 m = 15;
             }
-            n += add_extension(DT_EXT_COMMAND_LINE0, &p_hdr->extension[n],
+            n += add_extension(DT_EXT_CMDLINE0, &p_hdr->extension[n],
                 p_opt->cmdline+m, strlen(p_opt->cmdline+m));
         }
 

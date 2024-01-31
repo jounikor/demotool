@@ -169,6 +169,8 @@ int release_plugins(struct plugin_header *list)
     return released;
 }
 
+extern LONG rdat_array[];
+
 int load_plugins(char *path, struct plugin_header **head)
 {
     struct plugin_header *list = NULL;
@@ -178,7 +180,7 @@ int load_plugins(char *path, struct plugin_header **head)
     BPTR seglist;
     APTR address;
     int num_found = 0;
-    
+
     if ((fib = AllocDosObject(DOS_FIB,0)) != NULL) {
         if (lock = Lock(path,SHARED_LOCK)) {
             if (Examine(lock,fib)) {
