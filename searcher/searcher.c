@@ -164,7 +164,7 @@ static struct Screen *sp_screen = NULL;
 static struct Window *sp_window = NULL;
 
 /* Function prototypes.. unneeded but still here */
-static BOOL open_screen_window(void);
+static BOOL open_screen_window(WORD xpos);
 static void close_screen_window(void);
 static ULONG inc_scr_width(cop_cfg_t *p_cfg);
 static ULONG dec_scr_width(cop_cfg_t *p_cfg);
@@ -193,13 +193,14 @@ static ULONG handle_copper_search(cop_cfg_t *p_cfg, int qual, int min_num);
 
 /* Spaghetti code starts.. there are hardly comments.. */
 
-static BOOL open_screen_window(void)
+static BOOL open_screen_window(WORD xpos)
 {
     /* check for V39.. patch then tag extension */
     if (SysBase->LibNode.lib_Version >= 39) {
         s_newscreen.Type |= NS_EXTENDED;
     }
 
+    s_newscreen.LeftEdge = xpos;
     sp_screen = OpenScreen((const struct NewScreen *)&s_newscreen);
 
     if (sp_screen == NULL) {
@@ -956,9 +957,8 @@ int main(char *argv)
     sp_font = OpenFont(&s_topaz);
     init_cop_cfg(&cfg,FALSE);
 
-
     if (GfxBase && IntuitionBase && DOSBase && sp_font) {
-        open_screen_window();
+        open_screen_window(0);
         update_head_texts(sp_window,TRUE,~0,&cfg); 
         setup_sprites(sp_screen);
         p_ucl = setup_copper(sp_screen, &cfg);

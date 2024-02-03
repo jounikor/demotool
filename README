@@ -4,15 +4,17 @@ A demotool for remote execution of Amiga exes and ADFs
 over the network from a PC/Mac/Amiga..
 
 Developed entirely in my trusty A3000/040 setup using the
-other trusty A600/020 as the test host. The project has been made to
-compile under Amiga development environment. However, it is 
+other trusty A600/020 (which now seems to have heating issues
+again) as the test host. The project has been made to compile
+under a trivial Amiga VBCC development environment. However, it is 
 possible to compile the client side for other operating systems
 as well (I test with very old macOS Catalina (dosdude's patch)).
 
-The builds for Amiga are tested with vbcc and Roadshow networking
-stack. As usual the makefiles are somewhat crappy. In order to
-compile entire project for Amiga run the Makefile in the root
-directory.
+The builds for Amiga are tested with VBCC and Roadshow networking
+stack. You also need a decent 'make' tool.  As usual the makefiles
+are somewhat crappy and do not e.g. notice changes in header files ;)
+In order to compile entire project for Amiga run the Makefile in the
+root directory.
 
 In order to compile the client for other operating systems run:
 'make -C client all' in the root directory.
@@ -20,7 +22,7 @@ In order to compile the client for other operating systems run:
 
 Currently implemented:
 * Client for sending / reading files 
-  - Compiles on Amiga (kick 2.x required)
+  - Compiles on Amiga (kick 2.x required).
   - Compiles on Mac etc Berkeley sockets compliant OSes.
   - Default plugin commands: lsg0, lsg1, adr0, adf0
   - Default remote commands: reboot, quit
@@ -49,12 +51,16 @@ Currently implemented:
   - This is a tribute (and a reimplementation) of the classic "Graphic
     Searcher" originally by Terminators. A bit more system friendly
     (multitasks) and especially uses IDCMP for keyboard input.
-  - Only for OCS/ECS and uses native screen modes. 
+  - Only for OCS/ECS and uses native screen modes.
+  - Note that the palette area is made of sprites and therefore your
+    overscan settings can affect the amount of usable sprites. A 
+    horizontal start position 56 seems to be the lowest safe value.
+  - The tool is mean to be run from a shell. It has no WBstartup.
 
 * Demo startup
   - A highly configurable startup code for hardware banging demos (or
     alike). Used to take over and restrore the OS (including RTG systems)
-    as cleanly as possible.. 100% PC relative if needed.
+    as cleanly as possible (yeah.. right). 100% PC relative if needed.
   - Includes an optional TRACE macro that can be used to output
     RawDoFmt() formatted strings to serial at speeds of 9600, 115200,
     or 230400 bps. You need to have Execbase functional when using
@@ -81,6 +87,8 @@ Currently implemented:
 
 Work in Progress:
 * Generic cleanup of the code. It is rather messy in places.
+* Automatically horizontal position adjusting screen opening.
+* Make searcher more WB friendly.
 * More testing..
 
 
